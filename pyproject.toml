@@ -3,7 +3,7 @@ name = "finbr"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Renan Moretto",email = ""}
+    {name = "Renan Moretto",email = "renan_moretto@outlook.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.10"
