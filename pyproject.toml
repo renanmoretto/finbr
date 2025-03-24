@@ -8,6 +8,9 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "pandas (>=2.2.3,<3.0.0)",
+    "yfinance (>=0.2.55,<0.3.0)",
+    "requests (>=2.32.3,<3.0.0)"
 ]
 
 
