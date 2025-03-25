@@ -1,324 +1,249 @@
 import datetime
 
-import requests
-import pandas as pd
-from bs4 import BeautifulSoup
+from .base import Holiday
+from .holidays import NATIONAL_HOLIDAYS
 
 
-URL = 'https://api.bcb.gov.br'
+def _get_year_holidays(year: int, holidays: list[Holiday]) -> list[datetime.date]:
+    holidays_dates = []
+    for holiday in holidays:
+        holiday_date = holiday.calc_for_year(year)
+        if holiday_date is not None:
+            holidays_dates.append(holiday_date)
+    return holidays_dates
 
 
-def _get_url(
-    code: int,
-    start: datetime.date | None = None,
-    end: datetime.date | None = None,
-) -> str:
-    start = start.strftime('%d/%m/%Y') if start else ''
-    end = end.strftime('%d/%m/%Y') if end else ''
-    return f'{URL}/dados/serie/bcdata.sgs.{code}/dados?formato=json&dataInicial={start}&dataFinal={end}'
+def _get_year_dus(year: int, holidays: list[Holiday] | None = None) -> list[datetime.date]:
+    if holidays:
+        year_holidays = _get_year_holidays(year, holidays)
+    else:
+        year_holidays = []
+    date = datetime.date(year, 1, 1)
+    last_date_of_year = datetime.date(year, 12, 31)
+    dates = []
+    while date <= last_date_of_year:
+        if date.weekday() < 5 and date not in year_holidays:
+            dates.append(date)
+        date += datetime.timedelta(days=1)
+    return dates
 
 
-def _get_data_json(
-    code: int,
-    start: datetime.date | None = None,
-    end: datetime.date | None = None,
-) -> list[dict]:
-    url = _get_url(code, start, end)
-    response = requests.get(url)
-    response.raise_for_status()
-    return response.json()
+def _get_years_between_two_dates(start_date: datetime.date, end_date: datetime.date) -> list[int]:
+    if end_date > start_date:
+        years = [year for year in range(start_date.year, end_date.year + 1)]
+    else:
+        years = [year for year in range(start_date.year, end_date.year - 1, -1)]
+    return sorted(years)
 
 
-def _get_data(
-    code: int,
-    start: datetime.date | None = None,
-    end: datetime.date | None = None,
-    rename_to: str | None = None,
-) -> pd.Series:
-    data = _get_data_json(code, start, end)
-    values = [v['valor'] for v in data]
-    s = pd.Series(
-        pd.to_numeric(values),
-        index=pd.to_datetime([v['data'] for v in data], format='%d/%m/%Y'),
-    )
-    s.index.name = 'data'
-    s.name = rename_to or code
-    return s
+def _get_all_dus_for_years(years: list[int]) -> list[datetime.date]:
+    all_dus = []
+    for year in years:
+        all_dus += _get_year_dus(year, NATIONAL_HOLIDAYS)
+    return all_dus
 
 
-def series(
-    code: int | dict[int, str],
-    start: datetime.date | str | None = None,
-    end: datetime.date | str | None = None,
-) -> pd.Series:
-    """Fetch a single time series from the Brazilian Central Bank's SGS.
+def _find_du(start_date: datetime.date, direction: int) -> datetime.date:
+    date = start_date
+    while not is_du(date):
+        date += datetime.timedelta(days=direction)
+    return date
+
+
+def is_du(date: datetime.date) -> bool:
+    """
+    Checks if a given date is a business day.
 
     Parameters
     ----------
-    code : int or dict
-        If int, the code of the series to fetch.
-        If dict, a single key-value pair where key is the series code and value is the desired name.
-    start : datetime.date or str, optional
-        Start date for the series data. If string, must be in 'YYYY-MM-DD' format.
-        If None, fetches from the earliest available date.
-    end : datetime.date or str, optional
-        End date for the series data. If string, must be in 'YYYY-MM-DD' format.
-        If None, fetches until the latest available date.
+    date : datetime.date
+        The date to be checked.
 
     Returns
     -------
-    pandas.Series
-        A time series with dates as index and values as data.
-        The series name will be 'valor' for integer codes or the specified name for dict input.
-
-    Examples
-    --------
-    >>> sgs.series(12)  # Get CDI series with default name
-    >>> sgs.series({12: 'cdi'})  # Get CDI series with custom name
-    >>> sgs.series(12, start='2020-01-01')  # Get CDI from specific start date
-    >>> sgs.series(12, start='2015-01-01', end='2020-01-01')  # Get date range
+    bool
+        Returns True if the date is a business day, False otherwise.
     """
-    if isinstance(start, str):
-        start = datetime.datetime.strptime(start, '%Y-%m-%d').date()
-    if isinstance(end, str):
-        end = datetime.datetime.strptime(end, '%Y-%m-%d').date()
-
-    if isinstance(code, int):
-        return _get_data(code, start, end)
-
-    elif isinstance(code, dict):
-        if len(code) > 1:
-            raise ValueError(
-                "Only one code is allowed when using a 'series' function. For multiple codes use 'dataframe' function."
-            )
-
-        _code = list(code.keys())[0]
-        _name = code[_code]
-        return _get_data(_code, start, end, rename_to=_name)
+    if isinstance(date, datetime.datetime):
+        date = date.date()
+    year_dus = _get_year_dus(date.year, NATIONAL_HOLIDAYS)
+    if date in year_dus:
+        return True
+    return False
 
 
-def dataframe(
-    code: int | list[int] | dict[int, str],
-    start: datetime.date | str | None = None,
-    end: datetime.date | str | None = None,
-) -> pd.DataFrame:
-    """Fetch one or multiple time series from the Brazilian Central Bank's SGS as a DataFrame.
+def is_holiday(date: datetime.date) -> bool:
+    """
+    Checks if a given date is a holiday.
 
     Parameters
     ----------
-    code : int or list or dict
-        If int, fetches a single series.
-        If list, fetches multiple series using the codes in the list.
-        If dict, fetches series using codes as keys and uses the values as column names.
-    start : datetime.date or str, optional
-        Start date for the series data. If string, must be in 'YYYY-MM-DD' format.
-        If None, fetches from the earliest available date.
-    end : datetime.date or str, optional
-        End date for the series data. If string, must be in 'YYYY-MM-DD' format.
-        If None, fetches until the latest available date.
+    date : datetime.date
+        The date to be checked.
 
     Returns
     -------
-    pandas.DataFrame
-        A DataFrame with dates as index and series values as columns.
-        Column names will be 'valor' for integer codes or the specified names for dict input.
-
-    Examples
-    --------
-    >>> sgs.dataframe(12)  # Single series
-    >>> sgs.dataframe([12, 433])  # Multiple series
-    >>> sgs.dataframe({12: 'cdi', 433: 'poupanca'})  # Multiple series with custom names
-    >>> sgs.dataframe(12, start='2020-01-01')  # From specific start date
-    >>> sgs.dataframe(12, start='2015-01-01', end='2020-01-01')  # Date range
+    bool
+        Returns True if the date is a holiday, False otherwise.
     """
-    if isinstance(start, str):
-        start = datetime.datetime.strptime(start, '%Y-%m-%d').date()
-    if isinstance(end, str):
-        end = datetime.datetime.strptime(end, '%Y-%m-%d').date()
-
-    if isinstance(code, int):
-        data = _get_data(code, start, end)
-
-    elif isinstance(code, list):
-        data = pd.DataFrame()
-        for c in code:
-            single_data = _get_data(c, start, end)
-            data = pd.concat([data, single_data], axis=1)
-
-    elif isinstance(code, dict):
-        data = pd.DataFrame()
-        for c, name in code.items():
-            single_data = _get_data(c, start, end, rename_to=name)
-            data = pd.concat([data, single_data], axis=1)
-    data.index = pd.to_datetime(data.index)
-    data.index.name = 'data'
-    return data
+    holidays = _get_year_holidays(date.year, NATIONAL_HOLIDAYS)
+    if date in holidays:
+        return True
+    return False
 
 
-def json(
-    code: int | list[int] | dict[int, str],
-    start: datetime.date | None = None,
-    end: datetime.date | None = None,
-) -> list[dict]:
-    """Fetch time series data from the Brazilian Central Bank's SGS as JSON records.
+def delta_du(from_date: datetime.date, days_delta: int) -> datetime.date:
+    """
+    Calculates the date a certain number of business days from a specified date.
 
     Parameters
     ----------
-    code : int or list or dict
-        If int, fetches a single series.
-        If list, fetches multiple series using the codes in the list.
-        If dict, fetches series using codes as keys and uses the values as column names.
-    start : datetime.date or str, optional
-        Start date for the series data. If string, must be in 'YYYY-MM-DD' format.
-        If None, fetches from the earliest available date.
-    end : datetime.date or str, optional
-        End date for the series data. If string, must be in 'YYYY-MM-DD' format.
-        If None, fetches until the latest available date.
+    from_date : datetime.date
+        The starting date.
+    days_delta : int
+        The number of business days to be added to from_date.
 
     Returns
     -------
-    List[dict]
-        A list of dictionaries where each dictionary represents a date and its corresponding values.
-        Each dictionary contains 'data' (date) and one column per series with the value for that date.
-
-    Examples
-    --------
-    >>> sgs.json(12)  # Single series
-    >>> sgs.json([12, 433])  # Multiple series
-    >>> sgs.json({12: 'cdi', 433: 'ipca'})  # Multiple series with custom names
-    >>> sgs.json(12, start='2020-01-01')  # From specific start date
-    >>> sgs.json(12, start='2015-01-01', end='2020-01-01')  # Date range
+    datetime.date
+        The calculated business day date.
     """
-    data = dataframe(code, start, end)
-    data.index = data.index.strftime('%Y-%m-%d')
-    return data.reset_index().to_dict('records')
+    if not is_du(from_date):
+        raise ValueError("'date' is not a business day")
+
+    # days_delta*2 so the bday of the end year is always inside the list all_dus
+    start_calendar_date = from_date + datetime.timedelta(days=-days_delta * 4)
+    end_calendar_date = from_date + datetime.timedelta(days=days_delta * 4)
+    years = _get_years_between_two_dates(start_calendar_date, end_calendar_date)
+    all_dus = _get_all_dus_for_years(years)
+
+    date_position = all_dus.index(from_date)
+    return all_dus[date_position + days_delta]
 
 
-# search api
-
-
-def _get_session(language: str) -> requests.Session:
+def last_du(date: datetime.date | None = None) -> datetime.date:
     """
-    Starts a session on SGS and get cookies requesting the initial page.
-
-    Parameters
-    ----------
-    language: str, "en" or "pt"
-        Language used for search and results.
-    """
-    session = requests.Session()
-    url = 'https://www3.bcb.gov.br/sgspub/'
-    if language == 'pt':
-        url += 'index.jsp?idIdioma=P'
-    session.get(url)
-    return session
-
-
-def _search(query: int | str, language: str = 'pt') -> requests.Response:
-    session = _get_session(language)
-    url = 'https://www3.bcb.gov.br/sgspub/localizarseries/localizarSeries.do'
-
-    params = {
-        'method': 'localizarSeriesPorCodigo'
-        if isinstance(query, int)
-        else 'localizarSeriesPorTexto',
-        'periodicidade': 0,
-        'codigo': query if isinstance(query, int) else None,
-        'fonte': 341,
-        'texto': query if isinstance(query, str) else None,
-        'hdFiltro': None,
-        'hdOidGrupoSelecionado': None,
-        'hdSeqGrupoSelecionado': None,
-        'hdNomeGrupoSelecionado': None,
-        'hdTipoPesquisa': 4 if isinstance(query, int) else 6,
-        'hdTipoOrdenacao': 0,
-        'hdNumPagina': None,
-        'hdPeriodicidade': 'Todas',
-        'hdSeriesMarcadas': None,
-        'hdMarcarTodos': None,
-        'hdFonte': None,
-        'hdOidSerieMetadados': None,
-        'hdNumeracao': None,
-        'hdOidSeriesLocalizadas': None,
-        'linkRetorno': '/sgspub/consultarvalores/telaCvsSelecionarSeries.paint',
-        'linkCriarFiltros': '/sgspub/manterfiltros/telaMfsCriarFiltro.paint',
-    }
-
-    response = session.post(url, params=params, timeout=10)
-    response.raise_for_status()
-    return response
-
-
-def _parse_metadata_data(r: requests.Response) -> list[dict]:
-    soup = BeautifulSoup(r.text, 'html.parser')
-    table = soup.find('table', id='tabelaSeries')
-    series_data = []
-    if table:
-        rows = table.find_all('tr')[1:]
-        for row in rows:
-            cols = row.find_all('td')
-            if cols:
-                series = {
-                    'code': cols[1].text.strip(),
-                    'name': cols[2].text.strip(),
-                    'unit': cols[3].text.strip(),
-                    'frequency': cols[4].text.strip(),
-                    'start_date': cols[5].text.strip(),
-                    'end_date': cols[6].text.strip(),
-                    'source_name': cols[7].text.strip(),
-                    'special': cols[8].text.strip(),
-                }
-                series_data.append(series)
-    return series_data
-
-
-def search(query: int | str, language: str = 'pt') -> list[dict]:
-    """Search for time series in the Brazilian Central Bank's SGS by code or keyword.
-
-    Parameters
-    ----------
-    query : int or str
-        If int, searches for a specific series code.
-        If str, searches for series containing the keyword in their name.
-    language : str, default "pt"
-        Language for search interface and results. Options are "pt" for Portuguese or "en" for English.
+    Finds the last business day relative to today.
 
     Returns
     -------
-    List[Dict]
-        A list of dictionaries where each dictionary contains metadata about a matching series.
-        Each dictionary includes: code, name, unit, frequency, start_date, end_date, source_name, and special.
-
-    Examples
-    --------
-    >>> sgs.search("cdi")  # Search by keyword
-    >>> sgs.search(12)  # Search by code
-    >>> sgs.search("inflation", language="en")  # Search in English
+    datetime.date
+        The date of the last business day.
     """
-    r = _search(query, language)
-    return _parse_metadata_data(r)
+    if not date:
+        date = datetime.date.today()
+
+    if not is_du(date):
+        date = _find_du(date, 1)  # find next du
+
+    return delta_du(date, -1)
 
 
-def metadata(code: int, language: str = 'pt') -> dict:
-    """Fetch metadata about a specific time series from the Brazilian Central Bank's SGS.
-
-    Parameters
-    ----------
-    code : int
-        The code of the series to fetch metadata for.
-    language : str, default "pt"
-        Language for the metadata results. Options are "pt" for Portuguese or "en" for English.
+def next_du(date: datetime.date | None = None) -> datetime.date:
+    """
+    Finds the next business day relative to today.
 
     Returns
     -------
-    Dict
-        A dictionary containing metadata about the series, including:
-        code, name, unit, frequency, start_date, end_date, source_name, and special.
-
-    Examples
-    --------
-    >>> sgs.metadata(12)  # Get metadata for CDI series
-    >>> sgs.metadata(433, language="en")  # Get metadata for IPCA series in English
+    datetime.date
+        The date of the next business day.
     """
-    r = _search(code, language)
-    return _parse_metadata_data(r)[0]
+    if not date:
+        date = datetime.date.today()
+
+    if not is_du(date):
+        date = _find_du(date, -1)  # find last du
+
+    return delta_du(date, 1)
+
+
+def range_du(
+    start: datetime.date,
+    end: datetime.date,
+    include_end: bool = False,
+) -> list[datetime.date]:
+    """
+    Returns a list of business days within a specified range.
+
+    Parameters
+    ----------
+    start : datetime.date
+        The start date of the range.
+    end : datetime.date
+        The end date of the range.
+    include_end : bool, optional
+        If True, includes the end date in the range interval, default False.
+        By default, Python's range() is closed on the start and open on the
+        end of the interval, like [i,f[.
+
+    Returns
+    -------
+    list[datetime.date]
+        A list of business days within the specified range.
+    """
+    years = _get_years_between_two_dates(start, end)
+    all_dus = _get_all_dus_for_years(years)
+    if include_end:
+        return [du for du in all_dus if du >= start and du <= end]
+    else:
+        return [du for du in all_dus if du >= start and du < end]
+
+
+def year_dus(year: int) -> list[datetime.date]:
+    """
+    Returns a list of all business days for a given year.
+
+    Parameters
+    ----------
+    year : int
+        The year for which to calculate the business days.
+
+    Returns
+    -------
+    list[datetime.date]
+        A list containing all business days in the specified year.
+    """
+    return range_du(datetime.date(year, 1, 1), datetime.date(year, 12, 31), True)
+
+
+def year_holidays(year: int) -> list[datetime.date]:
+    """
+    Returns a list of all holidays for a given year.
+
+    If holidays are defined in the object, this method returns a list of those holidays
+    for the specified year. If no holidays are defined, returns an empty list.
+
+    Parameters
+    ----------
+    year : int
+        The year for which to retrieve the holidays.
+
+    Returns
+    -------
+    list[datetime.date]
+        A list containing all holidays for the specified year, or an empty list if
+        no holidays are defined.
+    """
+    return _get_year_holidays(year, NATIONAL_HOLIDAYS)
+
+
+def diff(a: datetime.date, b: datetime.date) -> int:
+    """
+    Calculates the number of business days between two dates (b-a).
+
+    Parameters
+    ----------
+    a : datetime.date
+    b : datetime.date
+
+    Returns
+    -------
+    int
+        Number of business days between dates 'a' and 'b'.
+    """
+    _years = {a.year, b.year}
+    years = list(range(min(_years), max(_years) + 1))
+    all_dus = _get_all_dus_for_years(years)
+    _min_date, _max_date = sorted((a, b))
+    dus = [_date for _date in all_dus if _min_date <= _date <= _max_date]
+    return (len(dus) - 1) * (1 if b > a else -1)
