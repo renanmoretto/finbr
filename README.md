@@ -1,3 +1,3 @@
 # finbr
 
-Collection of Python utilities for working with Brazilian financial data.
+Collection of Python utilities for Brazilian financial markets.
