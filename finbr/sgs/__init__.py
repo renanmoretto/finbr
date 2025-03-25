@@ -23,9 +23,10 @@ def _get_data_json(
     code: int,
     start: datetime.date | None = None,
     end: datetime.date | None = None,
+    timeout: int = 10,
 ) -> list[dict]:
     url = _get_url(code, start, end)
-    response = requests.get(url)
+    response = requests.get(url, timeout=timeout)
     response.raise_for_status()
     return response.json()
 
@@ -35,8 +36,9 @@ def _get_data(
     start: datetime.date | None = None,
     end: datetime.date | None = None,
     rename_to: str | None = None,
+    timeout: int = 10,
 ) -> pd.Series:
-    data = _get_data_json(code, start, end)
+    data = _get_data_json(code, start, end, timeout)
     values = [v['valor'] for v in data]
     s = pd.Series(
         pd.to_numeric(values),
@@ -47,61 +49,11 @@ def _get_data(
     return s
 
 
-def series(
-    code: int | dict[int, str],
-    start: datetime.date | str | None = None,
-    end: datetime.date | str | None = None,
-) -> pd.Series:
-    """Fetch a single time series from the Brazilian Central Bank's SGS.
-
-    Parameters
-    ----------
-    code : int or dict
-        If int, the code of the series to fetch.
-        If dict, a single key-value pair where key is the series code and value is the desired name.
-    start : datetime.date or str, optional
-        Start date for the series data. If string, must be in 'YYYY-MM-DD' format.
-        If None, fetches from the earliest available date.
-    end : datetime.date or str, optional
-        End date for the series data. If string, must be in 'YYYY-MM-DD' format.
-        If None, fetches until the latest available date.
-
-    Returns
-    -------
-    pandas.Series
-        A time series with dates as index and values as data.
-        The series name will be 'valor' for integer codes or the specified name for dict input.
-
-    Examples
-    --------
-    >>> sgs.series(12)  # Get CDI series with default name
-    >>> sgs.series({12: 'cdi'})  # Get CDI series with custom name
-    >>> sgs.series(12, start='2020-01-01')  # Get CDI from specific start date
-    >>> sgs.series(12, start='2015-01-01', end='2020-01-01')  # Get date range
-    """
-    if isinstance(start, str):
-        start = datetime.datetime.strptime(start, '%Y-%m-%d').date()
-    if isinstance(end, str):
-        end = datetime.datetime.strptime(end, '%Y-%m-%d').date()
-
-    if isinstance(code, int):
-        return _get_data(code, start, end)
-
-    elif isinstance(code, dict):
-        if len(code) > 1:
-            raise ValueError(
-                "Only one code is allowed when using a 'series' function. For multiple codes use 'dataframe' function."
-            )
-
-        _code = list(code.keys())[0]
-        _name = code[_code]
-        return _get_data(_code, start, end, rename_to=_name)
-
-
-def dataframe(
+def get(
     code: int | list[int] | dict[int, str],
     start: datetime.date | str | None = None,
     end: datetime.date | str | None = None,
+    timeout: int = 10,
 ) -> pd.DataFrame:
     """Fetch one or multiple time series from the Brazilian Central Bank's SGS as a DataFrame.
 
@@ -117,20 +69,22 @@ def dataframe(
     end : datetime.date or str, optional
         End date for the series data. If string, must be in 'YYYY-MM-DD' format.
         If None, fetches until the latest available date.
+    timeout : int, default 10
+        Timeout for the request.
 
     Returns
     -------
     pandas.DataFrame
         A DataFrame with dates as index and series values as columns.
-        Column names will be 'valor' for integer codes or the specified names for dict input.
+        Column names will be the integer codes or the specified names for dict input.
 
     Examples
     --------
-    >>> sgs.dataframe(12)  # Single series
-    >>> sgs.dataframe([12, 433])  # Multiple series
-    >>> sgs.dataframe({12: 'cdi', 433: 'poupanca'})  # Multiple series with custom names
-    >>> sgs.dataframe(12, start='2020-01-01')  # From specific start date
-    >>> sgs.dataframe(12, start='2015-01-01', end='2020-01-01')  # Date range
+    >>> sgs.get(12)  # Single series
+    >>> sgs.get([12, 433])  # Multiple series
+    >>> sgs.get({12: 'cdi', 433: 'poupanca'})  # Multiple series with custom names
+    >>> sgs.get(12, start='2020-01-01')  # From specific start date
+    >>> sgs.get(12, start='2015-01-01', end='2020-01-01')  # Date range
     """
     if isinstance(start, str):
         start = datetime.datetime.strptime(start, '%Y-%m-%d').date()
@@ -138,64 +92,26 @@ def dataframe(
         end = datetime.datetime.strptime(end, '%Y-%m-%d').date()
 
     if isinstance(code, int):
-        data = _get_data(code, start, end)
+        data = _get_data(code, start, end, timeout=timeout)
 
     elif isinstance(code, list):
         data = pd.DataFrame()
         for c in code:
-            single_data = _get_data(c, start, end)
+            single_data = _get_data(c, start, end, timeout=timeout)
             data = pd.concat([data, single_data], axis=1)
 
     elif isinstance(code, dict):
         data = pd.DataFrame()
         for c, name in code.items():
-            single_data = _get_data(c, start, end, rename_to=name)
+            single_data = _get_data(c, start, end, rename_to=name, timeout=timeout)
             data = pd.concat([data, single_data], axis=1)
+
     data.index = pd.to_datetime(data.index)
     data.index.name = 'data'
     return data
 
 
-def json(
-    code: int | list[int] | dict[int, str],
-    start: datetime.date | None = None,
-    end: datetime.date | None = None,
-) -> list[dict]:
-    """Fetch time series data from the Brazilian Central Bank's SGS as JSON records.
-
-    Parameters
-    ----------
-    code : int or list or dict
-        If int, fetches a single series.
-        If list, fetches multiple series using the codes in the list.
-        If dict, fetches series using codes as keys and uses the values as column names.
-    start : datetime.date or str, optional
-        Start date for the series data. If string, must be in 'YYYY-MM-DD' format.
-        If None, fetches from the earliest available date.
-    end : datetime.date or str, optional
-        End date for the series data. If string, must be in 'YYYY-MM-DD' format.
-        If None, fetches until the latest available date.
-
-    Returns
-    -------
-    List[dict]
-        A list of dictionaries where each dictionary represents a date and its corresponding values.
-        Each dictionary contains 'data' (date) and one column per series with the value for that date.
-
-    Examples
-    --------
-    >>> sgs.json(12)  # Single series
-    >>> sgs.json([12, 433])  # Multiple series
-    >>> sgs.json({12: 'cdi', 433: 'ipca'})  # Multiple series with custom names
-    >>> sgs.json(12, start='2020-01-01')  # From specific start date
-    >>> sgs.json(12, start='2015-01-01', end='2020-01-01')  # Date range
-    """
-    data = dataframe(code, start, end)
-    data.index = data.index.strftime('%Y-%m-%d')
-    return data.reset_index().to_dict('records')
-
-
-# search api
+# search/metadata
 
 
 def _get_session(language: str) -> requests.Session:
