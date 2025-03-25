@@ -158,7 +158,7 @@ class TestDiasUteis(unittest.TestCase):
         assert dus.diff(datetime.date(2034, 1, 2), datetime.date(2024, 11, 11)) == -2290
 
     def test_consciencia_negra(self):
-        # comecou em 2024
+        # started in 2024
         assert dus.is_du(datetime.date(2014, 11, 20))
         assert dus.is_du(datetime.date(2023, 11, 20))
         assert not dus.is_du(datetime.date(2024, 11, 20))
