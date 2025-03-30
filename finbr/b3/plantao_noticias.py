@@ -64,7 +64,8 @@ def _request(start: str, end: str) -> str:
 
 
 def get(
-    start: str | datetime.date | None = None, end: str | datetime.date | None = None
+    start: str | datetime.date | None = None,
+    end: str | datetime.date | None = None,
 ) -> list[NewB3]:
     if isinstance(start, datetime.date):
         start = start.isoformat()

@@ -134,6 +134,25 @@ rate = di1.rate('DI1F24', 95000)  # Interest rate for given price
 dv01_value = di1.dv01('DI1F24', 0.10)  # Sensitivity to 1bp change in rate
 ```
 
+The `finbr.b3.indices` module allows you to fetch historical prices for B3 indices. Including prices for IBOVESPA Index since 1968.
+
+```python
+from finbr.b3 import indices
+
+# Get Ibovespa historical data
+ibov = indices.get('IBOV')
+
+# Get other indices with specific year range
+small_caps = indices.get('SMLL', start_year=2015, end_year=2023)
+
+# Available indices include:
+# - IBOV (Ibovespa)
+# - SMLL (Small Caps)
+# - IDIV (Dividends)
+# And many others
+# See more https://www.b3.com.br/pt_br/market-data-e-indices/indices/indices-de-segmentos-e-setoriais/
+```
+
 The `finbr.b3.cotahist` module processes B3's COTAHIST historical data files containing trading information.
 
 ```python
@@ -166,7 +185,7 @@ from finbr.b3 import plantao_noticias
 today_news = plantao_noticias.get()
 
 # Get news for a specific date
-spec ific_date_news = plantao_noticias.get('2023-05-15')
+specific_date_news = plantao_noticias.get('2023-05-15')
 
 # Get news for a date range
 date_range_news = plantao_noticias.get('2023-05-01', '2023-05-15')
