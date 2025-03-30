@@ -18,3 +18,4 @@ ignore_*
 _old*
 .coverage
 htmlcov
+.cursor/
