@@ -107,7 +107,10 @@ def get(
             data = pd.concat([data, single_data], axis=1)
 
     data.index = pd.to_datetime(data.index)
-    data.index.name = 'data'
+    data.index.name = 'date'
+
+    if isinstance(data, pd.Series):
+        return pd.DataFrame(data)
     return data
 
 

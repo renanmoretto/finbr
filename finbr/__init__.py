@@ -45,3 +45,10 @@ def selic(annualized: bool = True) -> float:
     if annualized:
         return float(selic_data.iloc[-1]) / 100
     return round((1 + float(selic_data.iloc[-1]) / 100) ** (1 / 252) - 1, 4)
+
+
+def ipca() -> float:
+    """
+    Get the monthly IPCA (Consumer Price Index) rate from the Brazilian Central Bank's SGS.
+    """
+    return sgs.get({433: 'ipca'}) / 100
