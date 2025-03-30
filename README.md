@@ -10,12 +10,6 @@ Collection of Python utilities for Brazilian financial markets.
 pip install finbr
 ```
 
-## Features
-
-- Access to Brazilian Central Bank's data (SGS)
-- Financial market indicators (CDI, SELIC, IPCA)
-- Financial assets price data
-
 ## Usage Examples
 
 ```python
