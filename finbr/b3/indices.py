@@ -117,7 +117,7 @@ def get(
     >>> small_caps = get('SMLL', start_year=2015, end_year=2023)
     """
     if end_year is None:
-        end_year = datetime.date.today().year
+        end_year = datetime.date.today().year + 1
 
     if start_year is None:
         start_year = _get_index_first_year(index)
@@ -125,7 +125,8 @@ def get(
     data = {}
     for year in range(start_year, end_year):
         try:
-            data.update(_get_data(index, year))
+            year_data = _get_data(index, year)
+            data.update(year_data)
         except ValueError:
             continue
 

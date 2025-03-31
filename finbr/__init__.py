@@ -1,9 +1,20 @@
+from . import b3
+from . import dias_uteis
+from . import fundamentus
 from . import sgs
+from . import statusinvest
+from . import utils
 from ._yf import prices
 
+
 __all__ = [
-    'sgs',
+    'b3',
+    'dias_uteis',
+    'fundamentus',
     'prices',
+    'sgs',
+    'statusinvest',
+    'utils',
 ]
 
 

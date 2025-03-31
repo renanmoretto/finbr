@@ -9,25 +9,20 @@ _URL = 'https://api.bcb.gov.br'
 _URL_SGS_PUB = 'https://www3.bcb.gov.br/sgspub/'
 
 
-def _get_url(
-    code: int,
-    start: datetime.date | None = None,
-    end: datetime.date | None = None,
-) -> str:
-    start = start.strftime('%d/%m/%Y') if start else ''
-    end = end.strftime('%d/%m/%Y') if end else ''
-    return f'{_URL}/dados/serie/bcdata.sgs.{code}/dados?formato=json&dataInicial={start}&dataFinal={end}'
-
-
 def _get_data_json(
     code: int,
     start: datetime.date | None = None,
     end: datetime.date | None = None,
     timeout: int = 10,
 ) -> list[dict]:
-    url = _get_url(code, start, end)
+    start = start.strftime('%d/%m/%Y') if start else ''
+    end = end.strftime('%d/%m/%Y') if end else ''
+
+    url = f'{_URL}/dados/serie/bcdata.sgs.{code}/dados?formato=json&dataInicial={start}&dataFinal={end}'
+
     response = requests.get(url, timeout=timeout)
-    response.raise_for_status()
+    if response.status_code != 200:
+        raise requests.HTTPError(f'Status code {response.status_code}: {response.text}')
     return response.json()
 
 
