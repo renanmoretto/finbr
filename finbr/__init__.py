@@ -32,7 +32,7 @@ def cdi(annualized: bool = True) -> float:
     float
         The CDI rate.
     """
-    cdi_data = sgs.series(12, start='2025-01-01')
+    cdi_data = sgs.get(12, start='2025-01-01')[12]
     if annualized:
         return round((1 + float(cdi_data.iloc[-1]) / 100) ** (252) - 1, 4)
     return float(cdi_data.iloc[-1]) / 100
@@ -52,7 +52,7 @@ def selic(annualized: bool = True) -> float:
     float
         The SELIC rate.
     """
-    selic_data = sgs.series(432, start='2025-01-01')
+    selic_data = sgs.get(432, start='2025-01-01')[432]
     if annualized:
         return float(selic_data.iloc[-1]) / 100
     return round((1 + float(selic_data.iloc[-1]) / 100) ** (1 / 252) - 1, 4)
