@@ -19,3 +19,4 @@ _old*
 .coverage
 htmlcov
 .cursor/
+.vscode/

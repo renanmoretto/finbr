@@ -1,3 +1,5 @@
+import pandas as pd
+
 from . import b3
 from . import dias_uteis
 from . import fundamentus
@@ -5,17 +7,6 @@ from . import sgs
 from . import statusinvest
 from . import utils
 from ._yf import prices
-
-
-__all__ = [
-    'b3',
-    'dias_uteis',
-    'fundamentus',
-    'prices',
-    'sgs',
-    'statusinvest',
-    'utils',
-]
 
 
 def cdi(annualized: bool = True) -> float:
@@ -58,8 +49,20 @@ def selic(annualized: bool = True) -> float:
     return round((1 + float(selic_data.iloc[-1]) / 100) ** (1 / 252) - 1, 4)
 
 
-def ipca() -> float:
+def ipca(start: str | None = None, end: str | None = None) -> pd.DataFrame:
     """
     Get the monthly IPCA (Consumer Price Index) rate from the Brazilian Central Bank's SGS.
+
+    Parameters
+    ----------
+    start : str, optional
+        The start date of the period to get the IPCA.
+    end : str, optional
+        The end date of the period to get the IPCA.
+
+    Returns
+    -------
+    pd.DataFrame
+        The IPCA rate.
     """
-    return sgs.get({433: 'ipca'}) / 100
+    return sgs.get({433: 'ipca'}, start, end).div(100)

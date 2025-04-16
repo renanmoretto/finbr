@@ -1,29 +1,127 @@
 import datetime
+import time
+from typing import Generator
 
 import requests
+from requests.exceptions import ReadTimeout
 import pandas as pd
+import polars as pl
 from bs4 import BeautifulSoup
 
 
 _URL = 'https://api.bcb.gov.br'
 _URL_SGS_PUB = 'https://www3.bcb.gov.br/sgspub/'
+DEFAULT_TIMEOUT = 20
 
 
-def _get_data_json(
+def _make_chunks(
+    start: datetime.date | None = None,
+    end: datetime.date | None = None,
+    chunk_size: int = 360 * 10,
+) -> Generator[tuple[datetime.date, datetime.date], None, None]:
+    """chunk_size is in number of days"""
+    start = start or datetime.date(1900, 1, 1)
+    end = end or datetime.date.today()
+
+    # check if range fits chunk size
+    date_range = end - start
+    if date_range.days <= chunk_size:
+        yield start, end
+        return
+
+    chunk_start = end - datetime.timedelta(days=chunk_size)
+    chunk_end = end
+    while chunk_start >= start:
+        yield chunk_start, chunk_end
+        chunk_end = chunk_start - datetime.timedelta(days=1)
+        chunk_start = chunk_start - datetime.timedelta(days=chunk_size)
+
+    yield start, chunk_end
+
+
+def _get_data_in_chunks(
     code: int,
     start: datetime.date | None = None,
     end: datetime.date | None = None,
-    timeout: int = 10,
+    timeout: int = DEFAULT_TIMEOUT,  # lower than 20 will cause timeout errors, sgs api sometimes is slow
+    session: requests.Session | None = None,
 ) -> list[dict]:
-    start = start.strftime('%d/%m/%Y') if start else ''
-    end = end.strftime('%d/%m/%Y') if end else ''
+    def _safe_get(url, session, timeout=DEFAULT_TIMEOUT, retries=3, backoff=2):
+        for i in range(retries):
+            try:
+                return session.get(url, timeout=timeout)
+            except ReadTimeout:
+                time.sleep(backoff**i)
+        raise ReadTimeout(f'Failed to get {url} after {retries} retries')
 
-    url = f'{_URL}/dados/serie/bcdata.sgs.{code}/dados?formato=json&dataInicial={start}&dataFinal={end}'
+    if session is None:
+        session = requests.Session()
 
-    response = requests.get(url, timeout=timeout)
+    data = []
+    for chunk_start, chunk_end in _make_chunks(start, end):
+        url = f'{_URL}/dados/serie/bcdata.sgs.{code}/dados?formato=json&dataInicial={chunk_start:%d/%m/%Y}&dataFinal={chunk_end:%d/%m/%Y}'
+
+        # sometimes sgs api is slow to respond, so we need to retry
+        # but after the first try, it will be faster
+        response = _safe_get(url, session, timeout=timeout)
+
+        if response.status_code == 404:  # 404 means the series is not found, so we can break
+            break
+
+        if response.status_code != 200:
+            raise requests.HTTPError(f'Status code {response.status_code}: {response.text}')
+
+        sgs_data = response.json()
+        data.extend(sgs_data)
+
+    session.close()
+
+    # sort data by date
+    sorted_data = (
+        pl.DataFrame(data)
+        .with_columns(data_dt=pl.col('data').str.strptime(pl.Datetime, '%d/%m/%Y'))
+        .sort('data_dt')
+        .drop('data_dt')
+        .to_dicts()
+    )
+
+    return sorted_data
+
+
+def _get_raw_data(
+    code: int,
+    start: datetime.date | None = None,
+    end: datetime.date | None = None,
+    timeout: int = DEFAULT_TIMEOUT,
+    session: requests.Session | None = None,
+) -> list[dict]:
+    start_str = start.strftime('%d/%m/%Y') if start else ''
+    end_str = end.strftime('%d/%m/%Y') if end else ''
+
+    url = f'{_URL}/dados/serie/bcdata.sgs.{code}/dados?formato=json&dataInicial={start_str}&dataFinal={end_str}'
+
+    if session is None:
+        response = requests.get(url, timeout=timeout)
+    else:
+        response = session.get(url, timeout=timeout)
+
     if response.status_code != 200:
         raise requests.HTTPError(f'Status code {response.status_code}: {response.text}')
-    return response.json()
+
+    response_json = response.json()
+
+    if isinstance(response_json, list):
+        return response_json
+
+    if isinstance(response_json, dict):
+        if (
+            'error' in response_json.keys()
+            and response_json['error']
+            == 'O sistema aceita uma janela de consulta de, no máximo, 10 anos em séries de periodicidade diária'
+        ):
+            return _get_data_in_chunks(code, start, end, timeout, session)
+
+    raise ValueError(f'Unexpected response format: {response_json}')
 
 
 def _get_data(
@@ -31,9 +129,10 @@ def _get_data(
     start: datetime.date | None = None,
     end: datetime.date | None = None,
     rename_to: str | None = None,
-    timeout: int = 10,
+    timeout: int = DEFAULT_TIMEOUT,
+    session: requests.Session | None = None,
 ) -> pd.Series:
-    data = _get_data_json(code, start, end, timeout)
+    data = _get_raw_data(code, start, end, timeout, session)
     values = [v['valor'] for v in data]
     s = pd.Series(
         pd.to_numeric(values),
@@ -48,7 +147,7 @@ def get(
     code: int | list[int] | dict[int, str],
     start: datetime.date | str | None = None,
     end: datetime.date | str | None = None,
-    timeout: int = 10,
+    timeout: int = DEFAULT_TIMEOUT,
 ) -> pd.DataFrame:
     """Fetch one or multiple time series from the Brazilian Central Bank's SGS as a DataFrame.
 
@@ -64,8 +163,9 @@ def get(
     end : datetime.date or str, optional
         End date for the series data. If string, must be in 'YYYY-MM-DD' format.
         If None, fetches until the latest available date.
-    timeout : int, default 10
+    timeout : int, default 20
         Timeout for the request.
+        NOTE: We recomend using high timeouts for daily series. SGS API can be slow at times.
 
     Returns
     -------
@@ -89,17 +189,33 @@ def get(
     if isinstance(code, int):
         data = _get_data(code, start, end, timeout=timeout)
 
+    # on list and dicts, use a session to avoid cookies issues and speed up requests
     elif isinstance(code, list):
-        data = pd.DataFrame()
-        for c in code:
-            single_data = _get_data(c, start, end, timeout=timeout)
-            data = pd.concat([data, single_data], axis=1)
+        with requests.Session() as session:
+            data = pd.DataFrame()
+            for c in code:
+                single_data = _get_data(
+                    c,
+                    start,
+                    end,
+                    timeout=timeout,
+                    session=session,
+                )
+                data = pd.concat([data, single_data], axis=1)
 
     elif isinstance(code, dict):
-        data = pd.DataFrame()
-        for c, name in code.items():
-            single_data = _get_data(c, start, end, rename_to=name, timeout=timeout)
-            data = pd.concat([data, single_data], axis=1)
+        with requests.Session() as session:
+            data = pd.DataFrame()
+            for c, name in code.items():
+                single_data = _get_data(
+                    c,
+                    start,
+                    end,
+                    rename_to=name,
+                    timeout=timeout,
+                    session=session,
+                )
+                data = pd.concat([data, single_data], axis=1)
 
     data.index = pd.to_datetime(data.index)
     data.index.name = 'date'
@@ -112,25 +228,7 @@ def get(
 # search/metadata
 
 
-def _get_session(language: str) -> requests.Session:
-    """
-    Starts a session on SGS and get cookies requesting the initial page.
-
-    Parameters
-    ----------
-    language: str, "en" or "pt"
-        Language used for search and results.
-    """
-    session = requests.Session()
-    url = _URL_SGS_PUB
-    if language == 'pt':
-        url += 'index.jsp?idIdioma=P'
-    session.get(url)
-    return session
-
-
 def _search(query: int | str, language: str = 'pt') -> requests.Response:
-    session = _get_session(language)
     url = f'{_URL_SGS_PUB}/localizarseries/localizarSeries.do'
 
     params = {
@@ -158,10 +256,13 @@ def _search(query: int | str, language: str = 'pt') -> requests.Response:
         'linkRetorno': '/sgspub/consultarvalores/telaCvsSelecionarSeries.paint',
         'linkCriarFiltros': '/sgspub/manterfiltros/telaMfsCriarFiltro.paint',
     }
+    with requests.Session() as session:
+        # get cookies
+        session.get(f'{_URL_SGS_PUB}/', timeout=DEFAULT_TIMEOUT)
 
-    response = session.post(url, params=params, timeout=10)
-    response.raise_for_status()
-    return response
+        response = session.post(url, params=params, timeout=DEFAULT_TIMEOUT)
+        response.raise_for_status()
+        return response
 
 
 def _parse_metadata_data(r: requests.Response) -> list[dict]:
@@ -169,9 +270,9 @@ def _parse_metadata_data(r: requests.Response) -> list[dict]:
     table = soup.find('table', id='tabelaSeries')
     series_data = []
     if table:
-        rows = table.find_all('tr')[1:]
+        rows = table.find_all('tr')[1:]  # type: ignore
         for row in rows:
-            cols = row.find_all('td')
+            cols = row.find_all('td')  # type: ignore
             if cols:
                 series = {
                     'code': cols[1].text.strip(),
