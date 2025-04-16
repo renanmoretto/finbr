@@ -1,6 +1,6 @@
 [project]
 name = "finbr"
-version = "0.1.6"
+version = "0.1.7"
 description = "Collection of Python utilities for Brazilian financial markets."
 authors = [
     {name = "Renan Moretto",email = "renan_moretto@outlook.com"}
