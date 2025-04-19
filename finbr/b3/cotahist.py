@@ -158,33 +158,33 @@ CODBDI = {
 }
 
 
-def _get_txt_from_zip(zip_file: zipfile.ZipFile) -> io.BytesIO:
+def _get_txt_from_zip(zip_file: zipfile.ZipFile) -> bytes:
     file_name = zip_file.namelist()[0]
     with zip_file.open(file_name) as f:
         return f.read()
 
 
-def _requests_get_txt(date: datetime.date, raise_ssl_error: bool = False) -> io.BytesIO:
+def _requests_get_txt(data: datetime.date, ssl_error: bool = False) -> bytes:
     url = (
-        f'https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D{date.strftime("%d%m%Y")}.ZIP'
+        f'https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D{data.strftime("%d%m%Y")}.ZIP'
     )
-    r = requests.get(url, verify=raise_ssl_error)
+    r = requests.get(url, verify=ssl_error)
     r.raise_for_status()
     with zipfile.ZipFile(io.BytesIO(r.content)) as thezip:
         return _get_txt_from_zip(thezip)
 
 
-def _requests_get_txt_anual(year: int, raise_ssl_error: bool = False) -> io.BytesIO:
-    url = f'https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_A{year}.ZIP'
-    r = requests.get(url, verify=raise_ssl_error)
+def _requests_get_txt_anual(ano: int, ssl_error: bool = False) -> bytes:
+    url = f'https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_A{ano}.ZIP'
+    r = requests.get(url, verify=ssl_error)
     r.raise_for_status()
     with zipfile.ZipFile(io.BytesIO(r.content)) as thezip:
         return _get_txt_from_zip(thezip)
 
 
-def _read_bytes(bytes_data: io.BytesIO) -> pl.DataFrame:
+def _read_bytes(dados: bytes | io.BytesIO) -> pl.DataFrame:
     df_raw = pl.read_csv(
-        bytes_data,
+        dados,
         has_header=False,
         new_columns=['full_str'],
         encoding='latin1',
@@ -214,10 +214,12 @@ def _read_bytes(bytes_data: io.BytesIO) -> pl.DataFrame:
             pl.col(FLOAT32_COLUMNS).replace('', None).cast(pl.Float64).truediv(100).round(4),
             pl.col(FLOAT64_COLUMNS).replace('', None).cast(pl.Float64),
             pl.col(UINT32_COLUMNS).replace('', None).cast(pl.UInt32, strict=False),
-            pl.col('CODIGO_BDI').map_elements(lambda x: CODBDI.get(x, x), return_dtype=str),
-            pl.col('TIPO_DE_MERCADO').map_elements(lambda x: MARKETS.get(x, x), return_dtype=str),
+            pl.col('CODIGO_BDI').map_elements(lambda x: CODBDI.get(x, x), return_dtype=pl.Utf8),
+            pl.col('TIPO_DE_MERCADO').map_elements(
+                lambda x: MARKETS.get(x, x), return_dtype=pl.Utf8
+            ),
             pl.col('INDICADOR_DE_CORRECAO_DE_PRECOS').map_elements(
-                lambda x: INDOPC.get(x, x), return_dtype=str
+                lambda x: INDOPC.get(x, x), return_dtype=pl.Utf8
             ),
         )
     )
@@ -225,78 +227,78 @@ def _read_bytes(bytes_data: io.BytesIO) -> pl.DataFrame:
     return df
 
 
-def get_year(year: int, raise_ssl_error: bool = False) -> pd.DataFrame:
-    """Get historical B3 data for the entire specified year.
-    For data before 2014, B3 no longer has daily files, only annual ones.
+def get_ano(ano: int, ssl_error: bool = False) -> pd.DataFrame:
+    """Obtém dados históricos da B3 para o ano inteiro especificado.
+    Para dados anteriores a 2014, a B3 não possui mais arquivos diários, apenas anuais.
 
-    Parameters
+    Parâmetros
     ----------
-    year : int
-        Year for which data should be obtained.
-    raise_ssl_error : bool, default=False
-        If True, raises SSL errors during download.
+    ano : int
+        Ano para o qual os dados devem ser obtidos.
+    ssl_error : bool, default=False
+        Se True, levanta erros SSL durante o download.
 
-    Returns
+    Retorna
     -------
     pandas.DataFrame
-        DataFrame containing B3 historical data.
+        DataFrame contendo dados históricos da B3.
     """
-    bytes_data = _requests_get_txt_anual(year, raise_ssl_error=raise_ssl_error)
+    bytes_data = _requests_get_txt_anual(ano, ssl_error=ssl_error)
     df_polars = _read_bytes(bytes_data)
     return df_polars.to_pandas()
 
 
-def get(date: datetime.date | str, raise_ssl_error: bool = False) -> pd.DataFrame:
-    """Get historical B3 data for a specific date via download.
+def get(data: datetime.date | str, ssl_error: bool = False) -> pd.DataFrame:
+    """Obtém dados históricos da B3 para uma data específica via download.
 
-    Parameters
+    Parâmetros
     ----------
-    date : datetime.date
-        Date for which data should be obtained.
-    raise_ssl_error : bool, default=False
-        If True, raises SSL errors during download.
+    data : datetime.date
+        Data para a qual os dados devem ser obtidos.
+    ssl_error : bool, default=False
+        Se True, levanta erros SSL durante o download.
 
-    Returns
+    Retorna
     -------
     pandas.DataFrame
-        DataFrame containing B3 historical data.
+        DataFrame contendo dados históricos da B3.
     """
-    if isinstance(date, str):
-        date = datetime.datetime.strptime(date, '%Y-%m-%d').date()
-    bytes_data = _requests_get_txt(date, raise_ssl_error=raise_ssl_error)
+    if isinstance(data, str):
+        data = datetime.datetime.strptime(data, '%Y-%m-%d').date()
+    bytes_data = _requests_get_txt(data, ssl_error=ssl_error)
     df_polars = _read_bytes(bytes_data)
     return df_polars.to_pandas()
 
 
-def read_bytes(data: bytes | io.BytesIO) -> pd.DataFrame:
-    """Read historical B3 data from bytes or BytesIO.
+def read_bytes(dados: bytes | io.BytesIO) -> pd.DataFrame:
+    """Lê dados históricos da B3 a partir de bytes ou BytesIO.
 
-    Parameters
+    Parâmetros
     ----------
-    data : bytes or io.BytesIO
-        Data in bytes or BytesIO format containing the B3 file.
+    dados : bytes ou io.BytesIO
+        Dados em formato bytes ou BytesIO contendo o arquivo da B3.
 
-    Returns
+    Retorna
     -------
     pandas.DataFrame
-        DataFrame containing B3 historical data.
+        DataFrame contendo dados históricos da B3.
     """
-    df_polars = _read_bytes(data)
+    df_polars = _read_bytes(dados)
     return df_polars.to_pandas()
 
 
 def read_zip(path: str | Path) -> pd.DataFrame:
-    """Read historical B3 data from a ZIP file.
+    """Lê dados históricos da B3 a partir de um arquivo ZIP.
 
-    Parameters
+    Parâmetros
     ----------
-    path : str or Path
-        Path to the ZIP file containing B3 data.
+    path : str ou Path
+        Caminho para o arquivo ZIP contendo os dados da B3.
 
-    Returns
+    Retorna
     -------
     pandas.DataFrame
-        DataFrame containing B3 historical data.
+        DataFrame contendo dados históricos da B3.
     """
     with zipfile.ZipFile(path) as thezip:
         df_polars = _read_bytes(io.BytesIO(_get_txt_from_zip(thezip)))
@@ -305,17 +307,17 @@ def read_zip(path: str | Path) -> pd.DataFrame:
 
 
 def read_txt(path: str | Path) -> pd.DataFrame:
-    """Read historical B3 data from a TXT file.
+    """Lê dados históricos da B3 a partir de um arquivo TXT.
 
-    Parameters
+    Parâmetros
     ----------
-    path : str or Path
-        Path to the TXT file containing B3 data.
+    path : str ou Path
+        Caminho para o arquivo TXT contendo os dados da B3.
 
-    Returns
+    Retorna
     -------
     pandas.DataFrame
-        DataFrame containing B3 historical data.
+        DataFrame contendo dados históricos da B3.
     """
     if isinstance(path, str):
         path = Path(path)
