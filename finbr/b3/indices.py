@@ -50,7 +50,7 @@ def _get_data(index: str, year: int) -> dict[datetime.date, float]:
     r = requests.get(url)
 
     if r.content == b'':
-        raise ValueError(f'no data for {year}')
+        raise ValueError(f'não há dados para {year}')
 
     df_raw = pd.read_csv(
         io.BytesIO(base64.b64decode(r.content)), sep=';', encoding='latin1', skiprows=1, decimal=','
@@ -78,7 +78,7 @@ def _get_index_first_year(index: str) -> int:
     r_json = r.json()
     results = r_json['results']
     if not results:
-        raise ValueError(f"no data for index '{index}'")
+        raise ValueError(f"não há dados para o índice '{index}'")
     index_first_year = results[-1]['year']
     return int(index_first_year)
 

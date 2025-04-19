@@ -4,7 +4,7 @@ from typing import Literal
 from ._utils import _request, _request_and_parse
 
 
-def details(ticker: str) -> dict:
+def detalhes(ticker: str) -> dict:
     def _find_value(soup: BeautifulSoup, tag_name: str, text: str) -> float:
         tag = soup.find(tag_name, string=text)
         if tag:
@@ -55,36 +55,34 @@ def details(ticker: str) -> dict:
     }
 
 
-def income_statement(
+def resultados(
     ticker: str,
-    start_year: int | None = None,
-    end_year: int | None = None,
-    period: Literal['quarter', 'annual'] = 'quarter',
+    ano_inicio: int | None = None,
+    ano_fim: int | None = None,
+    periodo: Literal['trimestral', 'anual'] = 'trimestral',
 ) -> list[dict]:
-    _type = 0 if period == 'annual' else 1
-    return _request_and_parse('/acao/getdre', ticker, _type, start_year, end_year)
+    _type = 0 if periodo == 'anual' else 1
+    return _request_and_parse('/acao/getdre', ticker, _type, ano_inicio, ano_fim)
 
 
-def cash_flow(
+def fluxo_de_caixa(
     ticker: str,
-    start_year: int | None = None,
-    end_year: int | None = None,
-    # period: Literal['quarter', 'annual'] = 'quarter',
+    ano_inicio: int | None = None,
+    ano_fim: int | None = None,
+    periodo: Literal['trimestral', 'anual'] = 'trimestral',
 ) -> list[dict]:
-    """só tem annual pq o statusinvest não tem cash flow por trimestre certo"""
-    # _type = 0 if period == 'annual' else 1
-    type_ = 0
-    return _request_and_parse('/acao/getfluxocaixa', ticker, type_, start_year, end_year)
+    _type = 0 if periodo == 'anual' else 1
+    return _request_and_parse('/acao/getfluxocaixa', ticker, _type, ano_inicio, ano_fim)
 
 
-def balance_sheet(
+def balanco(
     ticker: str,
-    start_year: int | None = None,
-    end_year: int | None = None,
-    period: Literal['quarter', 'annual'] = 'quarter',
+    ano_inicio: int | None = None,
+    ano_fim: int | None = None,
+    periodo: Literal['trimestral', 'anual'] = 'trimestral',
 ) -> list[dict]:
-    _type = 0 if period == 'annual' else 1
-    return _request_and_parse('/acao/getativos', ticker, _type, start_year, end_year)
+    _type = 0 if periodo == 'anual' else 1
+    return _request_and_parse('/acao/getativos', ticker, _type, ano_inicio, ano_fim)
 
 
 def screener() -> list[dict]:
@@ -94,7 +92,7 @@ def screener() -> list[dict]:
     return r_json['list']
 
 
-def multiples(ticker: str) -> dict:
+def multiplos(ticker: str) -> dict:
     path = '/acao/indicatorhistoricallist'
     data = {
         'codes[]': ticker.lower(),
@@ -143,7 +141,7 @@ def payouts(ticker: str) -> list[dict]:
     ]
 
 
-def dividends(ticker: str) -> list[dict]:
+def dividendos(ticker: str) -> list[dict]:
     path = f'/acao/companytickerprovents?ticker={ticker}&chartProventsType=2'
     r = _request(path)
     r_json = r.json()

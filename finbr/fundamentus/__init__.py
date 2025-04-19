@@ -20,7 +20,7 @@ def _request(url: str) -> requests.Response:
     return response
 
 
-def details(ticker: str) -> dict:
+def detalhes(ticker: str) -> dict:
     response = _request(f'{URL}/detalhes.php?papel={ticker}')
 
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -66,7 +66,7 @@ def details(ticker: str) -> dict:
     return data
 
 
-def dividends(ticker: str) -> list[dict]:
+def proventos(ticker: str) -> list[dict]:
     response = _request(f'{URL}/proventos.php?papel={ticker}')
 
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -107,7 +107,7 @@ def dividends(ticker: str) -> list[dict]:
     return data
 
 
-def quarterly_results(ticker: str) -> list[dict]:
+def resultados_trimestrais(ticker: str) -> list[dict]:
     response = _request(f'{URL}/resultados_trimestrais.php?papel={ticker}')
 
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -138,7 +138,7 @@ def quarterly_results(ticker: str) -> list[dict]:
     return data
 
 
-def presentations(ticker: str) -> list[dict]:
+def apresentacoes(ticker: str) -> list[dict]:
     response = _request(f'{URL}/apresentacoes.php?papel={ticker}')
 
     soup = BeautifulSoup(response.text, 'html.parser')

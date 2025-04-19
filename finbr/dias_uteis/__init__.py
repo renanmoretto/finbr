@@ -109,7 +109,7 @@ def delta(data: datetime.date, dias: int) -> datetime.date:
         A data útil calculada.
     """
     if not dia_util(data):
-        raise ValueError("'data' is not a business day")
+        raise ValueError("'data' não é um dia útil")
 
     # days_delta*2 so the bday of the end year is always inside the list all_dus
     start_calendar_date = data + datetime.timedelta(days=-dias * 4)

@@ -38,16 +38,16 @@ def verifica_ticker(ticker: str):
     >>> verifica_ticker('DI1A24')  # Levanta ValueError (letra de contrato inválida)
     """
     if len(ticker) != 6:
-        raise ValueError(f'ticker length must be 6, got {len(ticker)}')
+        raise ValueError(f'ticker deve ter 6 caracteres, mas tem {len(ticker)}')
 
     if ticker[:3] != 'DI1':
-        raise ValueError("ticker needs to start with 'DI1', got {ticker[:3]}")
+        raise ValueError(f"ticker deve começar com 'DI1', mas começa com {ticker[:3]}")
 
     if ticker[3] not in _LETRA_CONTRATO_MES.keys():
-        raise ValueError(f'invalid ticker contract letter: {ticker[3]}')
+        raise ValueError(f'letra de contrato inválida: {ticker[3]}')
 
     if not ticker[-2:].isdigit():
-        raise ValueError(f'expected 2 digits at the end of ticker, got {ticker[-2:]}')
+        raise ValueError(f'esperado 2 dígitos no final do ticker, mas tem {ticker[-2:]}')
 
 
 def _verifica_ticker(func: Callable[..., Any]):

@@ -52,7 +52,7 @@ def _get_data_in_chunks(
                 return session.get(url, timeout=timeout)
             except ReadTimeout:
                 time.sleep(backoff**i)
-        raise ReadTimeout(f'Failed to get {url} after {retries} retries')
+        raise ReadTimeout(f'Falha ao obter {url} após {retries} tentativas')
 
     if session is None:
         session = requests.Session()
@@ -123,7 +123,7 @@ def _get_raw_data(
         ):
             return _get_data_in_chunks(codigo, inicio, fim, timeout, session)
 
-    raise ValueError(f'Unexpected response format: {response_json}')
+    raise ValueError(f'Formato de resposta inesperado: {response_json}')
 
 
 def _get_data(
@@ -147,8 +147,8 @@ def _get_data(
 
 def get(
     codigo: int | list[int] | dict[int, str],
-    inicio: datetime.date | str | None = None,
-    fim: datetime.date | str | None = None,
+    data_inicio: datetime.date | str | None = None,
+    data_fim: datetime.date | str | None = None,
     timeout: int = DEFAULT_TIMEOUT,
 ) -> pd.DataFrame:
     """Busca uma ou múltiplas séries temporais do SGS do Banco Central do Brasil como um DataFrame.
@@ -159,10 +159,10 @@ def get(
         Se int, busca uma única série.
         Se list, busca múltiplas séries usando os códigos na lista.
         Se dict, busca séries usando os códigos como chaves e usa os valores como nomes das colunas.
-    inicio : datetime.date ou str, opcional
+    data_inicio : datetime.date ou str, opcional
         Data inicial para os dados da série. Se string, deve estar no formato 'YYYY-MM-DD'.
         Se None, busca desde a data mais antiga disponível.
-    fim : datetime.date ou str, opcional
+    data_fim : datetime.date ou str, opcional
         Data final para os dados da série. Se string, deve estar no formato 'YYYY-MM-DD'.
         Se None, busca até a data mais recente disponível.
     timeout : int, padrão 20
@@ -183,13 +183,13 @@ def get(
     >>> sgs.get(12, start='2020-01-01')  # A partir de uma data específica
     >>> sgs.get(12, start='2015-01-01', end='2020-01-01')  # Intervalo de datas
     """
-    if isinstance(inicio, str):
-        inicio = datetime.datetime.strptime(inicio, '%Y-%m-%d').date()
-    if isinstance(fim, str):
-        fim = datetime.datetime.strptime(fim, '%Y-%m-%d').date()
+    if isinstance(data_inicio, str):
+        data_inicio = datetime.datetime.strptime(data_inicio, '%Y-%m-%d').date()
+    if isinstance(data_fim, str):
+        data_fim = datetime.datetime.strptime(data_fim, '%Y-%m-%d').date()
 
     if isinstance(codigo, int):
-        data = _get_data(codigo, inicio, fim, timeout=timeout)
+        data = _get_data(codigo, data_inicio, data_fim, timeout=timeout)
 
     # on list and dicts, use a session to avoid cookies issues and speed up requests
     elif isinstance(codigo, list):
@@ -198,8 +198,8 @@ def get(
             for c in codigo:
                 single_data = _get_data(
                     c,
-                    inicio,
-                    fim,
+                    data_inicio,
+                    data_fim,
                     timeout=timeout,
                     session=session,
                 )
@@ -211,8 +211,8 @@ def get(
             for c, nome in codigo.items():
                 single_data = _get_data(
                     c,
-                    inicio,
-                    fim,
+                    data_inicio,
+                    data_fim,
                     renomear_para=nome,
                     timeout=timeout,
                     session=session,
@@ -220,7 +220,7 @@ def get(
                 data = pd.concat([data, single_data], axis=1)
 
     data.index = pd.to_datetime(data.index)
-    data.index.name = 'date'
+    data.index.name = 'data'
 
     if isinstance(data, pd.Series):
         return pd.DataFrame(data)

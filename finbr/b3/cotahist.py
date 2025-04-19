@@ -323,7 +323,7 @@ def read_txt(path: str | Path) -> pd.DataFrame:
         path = Path(path)
 
     if not path.suffix.lower() == '.txt':
-        raise ValueError('path must be a .txt file')
+        raise ValueError('arquivo deve ser .txt')
 
     with open(path, 'rb') as f:
         df_polars = _read_bytes(io.BytesIO(f.read()))

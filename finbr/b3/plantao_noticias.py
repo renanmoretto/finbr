@@ -18,7 +18,7 @@ class NoticiaB3:
         self.id_agencia = _dict['IdAgencia']
         self.conteudo = _dict['content']
         self.data_hora = _dict['dateTime']
-        self.titulo = _dict['headline']
+        self.headline = _dict['headline']
         self.id = _dict['id']
 
         try:
@@ -32,7 +32,7 @@ class NoticiaB3:
             self.empresa = 'na'
 
         try:
-            ticker = re.findall('\((.*?)\)', _dict['headline'])[0]  # type: ignore
+            ticker = re.findall(r'\((.*?)\)', _dict['headline'])[0]
             if '-' in ticker:  # ex. LUPA-NM
                 ticker = ticker.split('-')[0]
             self.ticker = str(ticker)
