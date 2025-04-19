@@ -80,33 +80,33 @@ O módulo `dias_uteis` auxilia nos cálculos de dias úteis brasileiros, conside
 
 ```python
 from datetime import date
-import finbr.dias_uteis as du
+import finbr.dias_uteis as dus
 
 # verifica se uma data é um dia útil
-eh_dia_util = du.dia_util(date(2023, 5, 1))  # False (Dia do Trabalho)
+eh_dia_util = dus.dia_util(date(2023, 5, 1))  # False (Dia do Trabalho)
 
 # obtém próximo dia útil
-proximo_dia_util = du.proximo()  # Próximo dia útil a partir de hoje
+proximo_dia_util = dus.proximo()  # Próximo dia útil a partir de hoje
 
 # obtém dia útil anterior
-dia_util_anterior = du.ultimo()  # Dia útil anterior a hoje
+dia_util_anterior = dus.ultimo()  # Dia útil anterior a hoje
 
 # adiciona ou subtrai dias úteis a uma data
 data = date(2023, 1, 2)
-data_futura = du.delta(data, 5)  # 5 dias úteis após 2 de janeiro
-data_futura = du.delta(data, -5)  # 5 dias úteis antes de 2 de janeiro
+data_futura = dus.delta(data, 5)  # 5 dias úteis após 2 de janeiro
+data_futura = dus.delta(data, -5)  # 5 dias úteis antes de 2 de janeiro
 
 # dias úteis entre duas datas
-dias_uteis_intervalo = du.intervalo(date(2023, 1, 1), date(2023, 1, 31))
+dias_uteis_intervalo = dus.intervalo(date(2023, 1, 1), date(2023, 1, 31))
 
 # todos os dias úteis em um ano
-dias_uteis_do_ano = du.dias_uteis_ano(2023)
+dias_uteis_do_ano = dus.dias_uteis_ano(2023)
 
 # todos os feriados em um ano
-feriados_do_ano = du.feriados_ano(2023)
+feriados_do_ano = dus.feriados_ano(2023)
 
 # calcula o número de dias úteis entre duas datas
-diferenca_dias = du.dif(date(2023, 1, 1), date(2023, 1, 31))
+diferenca_dias = dus.dif(date(2023, 1, 1), date(2023, 1, 31))
 ```
 
 ### `finbr.b3`
