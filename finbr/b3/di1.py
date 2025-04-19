@@ -7,7 +7,7 @@ import finbr.dias_uteis as dus
 
 
 DI_FINAL_NOMINAL_VALUE = 100_000
-_CONTRACT_LETTERS_MONTH = {
+_CONTRATO_MES = {
     'F': 1,
     'G': 2,
     'H': 3,
@@ -23,26 +23,26 @@ _CONTRACT_LETTERS_MONTH = {
 }
 
 
-def verify_ticker(ticker: str):
-    """Verify if a DI1 ticker is valid.
+def verifica_ticker(ticker: str):
+    """Verifica se um ticker DI1 é válido.
 
-    Parameters
+    Parâmetros
     ----------
     ticker : str
-        The ticker to verify. Must be 6 characters long, starting with 'DI1',
-        followed by a valid contract letter and 2 digits.
+        O ticker a ser verificado. Deve ter 6 caracteres, começar com 'DI1',
+        seguido por uma letra de contrato válida e 2 dígitos.
 
-    Raises
-    ------
-    ValueError
-        If the ticker length is not 6, doesn't start with 'DI1', has an invalid
-        contract letter, or doesn't end with 2 digits.
-
-    Examples
+    Exceções
     --------
-    >>> verify_ticker('DI1F24')  # Valid ticker
-    >>> verify_ticker('DI1X25')  # Valid ticker
-    >>> verify_ticker('DI1A24')  # Raises ValueError (invalid contract letter)
+    ValueError
+        Se o tamanho do ticker não for 6, não começar com 'DI1', tiver uma letra
+        de contrato inválida ou não terminar com 2 dígitos.
+
+    Exemplos
+    --------
+    >>> verifica_ticker('DI1F24')  # Ticker válido
+    >>> verifica_ticker('DI1X25')  # Ticker válido
+    >>> verifica_ticker('DI1A24')  # Levanta ValueError (letra de contrato inválida)
     """
     if len(ticker) != 6:
         raise ValueError(f'ticker length must be 6, got {len(ticker)}')
@@ -50,189 +50,189 @@ def verify_ticker(ticker: str):
     if ticker[:3] != 'DI1':
         raise ValueError("ticker needs to start with 'DI1', got {ticker[:3]}")
 
-    if ticker[3] not in _CONTRACT_LETTERS_MONTH.keys():
+    if ticker[3] not in _CONTRATO_MES.keys():
         raise ValueError(f'invalid ticker contract letter: {ticker[3]}')
 
     if not ticker[-2:].isdigit():
         raise ValueError(f'expected 2 digits at the end of ticker, got {ticker[-2:]}')
 
 
-def _verify_ticker(func: Callable[..., Any]):
+def _verifica_ticker(func: Callable[..., Any]):
     def wrapper(ticker, *args, **kwargs):
-        verify_ticker(ticker)
+        verifica_ticker(ticker)
         return func(ticker, *args, **kwargs)
 
     return wrapper
 
 
-@_verify_ticker
-def maturity_date(ticker: str) -> datetime.date:
-    """Calculate the maturity date for a DI1 contract.
+@_verifica_ticker
+def vencimento(ticker: str) -> datetime.date:
+    """Calcula a data de vencimento de um contrato DI1.
 
-    Parameters
+    Parâmetros
     ----------
     ticker : str
-        The DI1 ticker to calculate maturity date for.
+        O ticker DI1 para calcular a data de vencimento.
 
-    Returns
+    Retorna
     -------
     datetime.date
-        The maturity date of the contract, which is the first business day
-        of the contract month.
+        A data de vencimento do contrato, que é o primeiro dia útil
+        do mês do contrato.
 
-    Examples
+    Exemplos
     --------
-    >>> maturity_date('DI1F24')  # Returns date for first business day of January 2024
-    >>> maturity_date('DI1X25')  # Returns date for first business day of November 2025
+    >>> vencimento('DI1F24')  # Retorna a data do primeiro dia útil de janeiro de 2024
+    >>> vencimento('DI1X25')  # Retorna a data do primeiro dia útil de novembro de 2025
     """
-    contract = ticker[3]
-    month = _CONTRACT_LETTERS_MONTH[contract]
-    year = int('20' + ticker[-2:])
+    contrato = ticker[3]
+    mes = _CONTRATO_MES[contrato]
+    ano = int('20' + ticker[-2:])
 
-    date = datetime.date(year, month, 1)
+    data = datetime.date(ano, mes, 1)
     while True:
-        if dus.is_du(date):
+        if dus.is_du(data):
             break
-        date = date + datetime.timedelta(1)
-    return date
+        data = data + datetime.timedelta(1)
+    return data
 
 
-@_verify_ticker
-def days_to_maturity(
+@_verifica_ticker
+def dias_vencimento(
     ticker: str,
-    date: datetime.date | None = None,
-    business_days: bool = True,
+    data: datetime.date | None = None,
+    dias_uteis: bool = True,
 ) -> int:
-    """Calculate the number of days until contract maturity.
+    """Calcula o número de dias até o vencimento do contrato.
 
-    Parameters
+    Parâmetros
     ----------
     ticker : str
-        The DI1 ticker to calculate days to maturity for.
-    date : datetime.date, optional
-        The reference date to calculate days from. If None, uses today.
-    business_days : bool, default True
-        If True, returns only business days. If False, returns calendar days.
+        O ticker DI1 para calcular os dias até o vencimento.
+    data : datetime.date, opcional
+        A data de referência para o cálculo. Se None, usa a data de hoje.
+    dias_uteis : bool, padrão True
+        Se True, retorna apenas dias úteis. Se False, retorna dias corridos.
 
-    Returns
+    Retorna
     -------
     int
-        Number of days until maturity.
+        Número de dias até o vencimento.
 
-    Examples
+    Exemplos
     --------
-    >>> days_to_maturity('DI1F24')  # Days until January 2024 maturity
-    >>> days_to_maturity('DI1X25', business_days=False)  # Calendar days until November 2025 maturity
+    >>> dias_vencimento('DI1F24')  # Dias até o vencimento de janeiro de 2024
+    >>> dias_vencimento('DI1X25', dias_uteis=False)  # Dias corridos até novembro de 2025
     """
-    if not date:
-        date = datetime.date.today()
+    if not data:
+        data = datetime.date.today()
 
-    if business_days:
-        return dus.diff(date, maturity_date(ticker))
+    if dias_uteis:
+        return dus.diff(data, vencimento(ticker))
     else:
-        return (maturity_date(ticker) - date).days
+        return (vencimento(ticker) - data).days
 
 
-@_verify_ticker
-def price(
+@_verifica_ticker
+def preco_unico(
     ticker: str,
     taxa: float,
-    date: datetime.date | None = None,
+    data: datetime.date | None = None,
 ) -> float:
-    """Calculate the price (PU) of a DI1 contract.
+    """Calcula o preço (PU) de um contrato DI1.
 
-    Parameters
+    Parâmetros
     ----------
     ticker : str
-        The DI1 ticker to calculate price for.
+        O ticker DI1 para calcular o preço.
     taxa : float
-        The interest rate (in decimal form, e.g., 0.10 for 10%).
-    date : datetime.date, optional
-        The reference date to calculate price for. If None, uses today.
+        A taxa de juros (em formato decimal, ex: 0.10 para 10%).
+    data : datetime.date, opcional
+        A data de referência para o cálculo. Se None, usa a data de hoje.
 
-    Returns
+    Retorna
     -------
     float
-        The price (PU) of the contract, rounded to 2 decimal places.
+        O preço (PU) do contrato, arredondado para 2 casas decimais.
 
-    Examples
+    Exemplos
     --------
-    >>> price('DI1F24', 0.10)  # Price for January 2024 contract at 10% rate
-    >>> price('DI1X25', 0.12, date=datetime.date(2023, 12, 1))  # Price for specific date
+    >>> preco_unico('DI1F24', 0.10)  # Preço para o contrato de janeiro de 2024 a 10% a.a.
+    >>> preco_unico('DI1X25', 0.12, data=datetime.date(2023, 12, 1))  # Preço para data específica
     """
-    if not date:
-        date = datetime.date.today()
+    if not data:
+        data = datetime.date.today()
 
-    days = days_to_maturity(ticker=ticker, date=date)
-    _pu = DI_FINAL_NOMINAL_VALUE / ((1 + taxa) ** (days / 252))
+    dias = dias_vencimento(ticker=ticker, data=data)
+    _pu = DI_FINAL_NOMINAL_VALUE / ((1 + taxa) ** (dias / 252))
     return round(_pu, 2)
 
 
-@_verify_ticker
-def rate(
+@_verifica_ticker
+def taxa(
     ticker: str,
-    pu: float,
-    date: datetime.date | None = None,
+    preco_unico: float,
+    data: datetime.date | None = None,
 ) -> float:
-    """Calculate the interest rate of a DI1 contract given its price.
+    """Calcula a taxa de juros de um contrato DI1 dado seu preço.
 
-    Parameters
+    Parâmetros
     ----------
     ticker : str
-        The DI1 ticker to calculate rate for.
-    pu : float
-        The price of the contract.
-    date : datetime.date, optional
-        The reference date to calculate rate for. If None, uses today.
+        O ticker DI1 para calcular a taxa.
+    preco_unico : float
+        O preço do contrato.
+    data : datetime.date, opcional
+        A data de referência para o cálculo. Se None, usa a data de hoje.
 
-    Returns
+    Retorna
     -------
     float
-        The interest rate in decimal form, rounded to 5 decimal places.
+        A taxa de juros em formato decimal, arredondada para 5 casas decimais.
 
-    Examples
+    Exemplos
     --------
-    >>> rate('DI1F24', 95000)  # Rate for January 2024 contract at given price
-    >>> rate('DI1X25', 90000, date=datetime.date(2023, 12, 1))  # Rate for specific date
+    >>> taxa('DI1F24', 95000)  # Taxa para o contrato de janeiro de 2024 dado o preço
+    >>> taxa('DI1X25', 90000, data=datetime.date(2023, 12, 1))  # Taxa para data específica
     """
-    if not date:
-        date = datetime.date.today()
+    if not data:
+        data = datetime.date.today()
 
-    days = days_to_maturity(ticker=ticker, date=date)
-    taxa = math.exp((252 / days) * math.log(DI_FINAL_NOMINAL_VALUE / pu)) - 1
+    dias = dias_vencimento(ticker=ticker, data=data)
+    taxa = math.exp((252 / dias) * math.log(DI_FINAL_NOMINAL_VALUE / preco_unico)) - 1
     return round(taxa, 5)
 
 
-@_verify_ticker
+@_verifica_ticker
 def dv01(
     ticker: str,
     taxa: float,
-    date: datetime.date | None = None,
+    data: datetime.date | None = None,
 ) -> float:
-    """Calculate the DV01 (dollar value of 1 basis point) of a DI1 contract.
+    """Calcula o DV01 (valor do contrato para variação de 1 basis point) de um DI1.
 
-    Parameters
+    Parâmetros
     ----------
     ticker : str
-        The DI1 ticker to calculate DV01 for.
+        O ticker DI1 para calcular o DV01.
     taxa : float
-        The interest rate (in decimal form, e.g., 0.10 for 10%).
-    date : datetime.date, optional
-        The reference date to calculate DV01 for. If None, uses today.
+        A taxa de juros (em formato decimal, ex: 0.10 para 10%).
+    data : datetime.date, opcional
+        A data de referência para o cálculo. Se None, usa a data de hoje.
 
-    Returns
+    Retorna
     -------
     float
-        The DV01 of the contract, rounded to 2 decimal places.
+        O DV01 do contrato, arredondado para 2 casas decimais.
 
-    Examples
+    Exemplos
     --------
-    >>> dv01('DI1F24', 0.10)  # DV01 for January 2024 contract at 10% rate
-    >>> dv01('DI1X25', 0.12, date=datetime.date(2023, 12, 1))  # DV01 for specific date
+    >>> dv01('DI1F24', 0.10)  # DV01 para o contrato de janeiro de 2024 a 10% a.a.
+    >>> dv01('DI1X25', 0.12, data=datetime.date(2023, 12, 1))  # DV01 para data específica
     """
-    if not date:
-        date = datetime.date.today()
+    if not data:
+        data = datetime.date.today()
 
-    _price = price(ticker, taxa, date)
-    _price1 = price(ticker, taxa + 0.0001, date)
-    return round(_price - _price1, 2)
+    _preco = preco_unico(ticker, taxa, data)
+    _preco1 = preco_unico(ticker, taxa + 0.0001, data)
+    return round(_preco - _preco1, 2)

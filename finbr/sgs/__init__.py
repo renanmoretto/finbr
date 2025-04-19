@@ -151,37 +151,37 @@ def get(
     fim: datetime.date | str | None = None,
     timeout: int = DEFAULT_TIMEOUT,
 ) -> pd.DataFrame:
-    """Fetch one or multiple time series from the Brazilian Central Bank's SGS as a DataFrame.
+    """Busca uma ou múltiplas séries temporais do SGS do Banco Central do Brasil como um DataFrame.
 
-    Parameters
+    Parâmetros
     ----------
-    codigo : int or list or dict
-        If int, fetches a single series.
-        If list, fetches multiple series using the codes in the list.
-        If dict, fetches series using codes as keys and uses the values as column names.
-    inicio : datetime.date or str, optional
-        Start date for the series data. If string, must be in 'YYYY-MM-DD' format.
-        If None, fetches from the earliest available date.
-    fim : datetime.date or str, optional
-        End date for the series data. If string, must be in 'YYYY-MM-DD' format.
-        If None, fetches until the latest available date.
-    timeout : int, default 20
-        Timeout for the request.
-        NOTE: We recomend using high timeouts for daily series. SGS API can be slow at times.
+    codigo : int ou list ou dict
+        Se int, busca uma única série.
+        Se list, busca múltiplas séries usando os códigos na lista.
+        Se dict, busca séries usando os códigos como chaves e usa os valores como nomes das colunas.
+    inicio : datetime.date ou str, opcional
+        Data inicial para os dados da série. Se string, deve estar no formato 'YYYY-MM-DD'.
+        Se None, busca desde a data mais antiga disponível.
+    fim : datetime.date ou str, opcional
+        Data final para os dados da série. Se string, deve estar no formato 'YYYY-MM-DD'.
+        Se None, busca até a data mais recente disponível.
+    timeout : int, padrão 20
+        Timeout para a requisição.
+        NOTA: Recomendamos usar timeouts altos para séries diárias. A API do SGS pode ser lenta às vezes.
 
-    Returns
+    Retorno
     -------
     pandas.DataFrame
-        A DataFrame with dates as index and series values as columns.
-        Column names will be the integer codes or the specified names for dict input.
+        Um DataFrame com datas como índice e valores das séries como colunas.
+        Os nomes das colunas serão os códigos inteiros ou os nomes especificados para entrada do tipo dict.
 
-    Examples
+    Exemplos
     --------
-    >>> sgs.get(12)  # Single series
-    >>> sgs.get([12, 433])  # Multiple series
-    >>> sgs.get({12: 'cdi', 433: 'poupanca'})  # Multiple series with custom names
-    >>> sgs.get(12, start='2020-01-01')  # From specific start date
-    >>> sgs.get(12, start='2015-01-01', end='2020-01-01')  # Date range
+    >>> sgs.get(12)  # Série única
+    >>> sgs.get([12, 433])  # Múltiplas séries
+    >>> sgs.get({12: 'cdi', 433: 'poupanca'})  # Múltiplas séries com nomes customizados
+    >>> sgs.get(12, start='2020-01-01')  # A partir de uma data específica
+    >>> sgs.get(12, start='2015-01-01', end='2020-01-01')  # Intervalo de datas
     """
     if isinstance(inicio, str):
         inicio = datetime.datetime.strptime(inicio, '%Y-%m-%d').date()
@@ -291,52 +291,52 @@ def _parse_metadata(r: requests.Response) -> list[dict]:
 
 
 def pesquisar(query: int | str, idioma: str = 'pt') -> list[dict]:
-    """Search for time series in the Brazilian Central Bank's SGS by code or keyword.
+    """Busca séries temporais no SGS do Banco Central do Brasil por código ou palavra-chave.
 
-    Parameters
+    Parâmetros
     ----------
-    query : int or str
-        If int, searches for a specific series code.
-        If str, searches for series containing the keyword in their name.
-    idioma : str, default "pt"
-        Language for search interface and results. Options are "pt" for Portuguese or "en" for English.
+    query : int ou str
+        Se int, busca por um código de série específico.
+        Se str, busca por séries que contenham a palavra-chave no nome.
+    idioma : str, padrão "pt"
+        Idioma da interface de busca e dos resultados. Opções são "pt" para português ou "en" para inglês.
 
-    Returns
+    Retorno
     -------
     List[Dict]
-        A list of dictionaries where each dictionary contains metadata about a matching series.
-        Each dictionary includes: code, name, unit, frequency, start_date, end_date, source_name, and special.
+        Uma lista de dicionários, onde cada dicionário contém metadados sobre uma série encontrada.
+        Cada dicionário inclui: code, name, unit, frequency, start_date, end_date, source_name e special.
 
-    Examples
+    Exemplos
     --------
-    >>> sgs.search("cdi")  # Search by keyword
-    >>> sgs.search(12)  # Search by code
-    >>> sgs.search("inflation", idioma="en")  # Search in English
+    >>> sgs.search("cdi")  # Busca por palavra-chave
+    >>> sgs.search(12)  # Busca por código
+    >>> sgs.search("inflation", idioma="en")  # Busca em inglês
     """
     r = _search(query, idioma)
     return _parse_metadata(r)
 
 
 def metadata(codigo: int, idioma: str = 'pt') -> dict:
-    """Fetch metadata about a specific time series from the Brazilian Central Bank's SGS.
+    """Busca metadados sobre uma série temporal específica do SGS do Banco Central do Brasil.
 
-    Parameters
+    Parâmetros
     ----------
     codigo : int
-        The codigo of the series to fetch metadata for.
-    idioma : str, default "pt"
-        Language for the metadata results. Options are "pt" for Portuguese or "en" for English.
+        O código da série para buscar os metadados.
+    idioma : str, padrão "pt"
+        Idioma dos resultados dos metadados. Opções são "pt" para português ou "en" para inglês.
 
-    Returns
+    Retorno
     -------
     Dict
-        A dictionary containing metadata about the series, including:
-        codigo, name, unit, frequency, start_date, end_date, source_name, and special.
+        Um dicionário contendo metadados sobre a série, incluindo:
+        codigo, name, unit, frequency, start_date, end_date, source_name e special.
 
-    Examples
+    Exemplos
     --------
-    >>> sgs.metadata(12)  # Get metadata for CDI series
-    >>> sgs.metadata(433, idioma="en")  # Get metadata for IPCA series in English
+    >>> sgs.metadata(12)  # Metadados da série CDI
+    >>> sgs.metadata(433, idioma="en")  # Metadados da série IPCA em inglês
     """
     r = _search(codigo, idioma)
     return _parse_metadata(r)[0]
