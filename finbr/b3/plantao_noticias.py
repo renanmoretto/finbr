@@ -12,24 +12,24 @@ URL = 'https://sistemasweb.b3.com.br/PlantaoNoticias/Noticias/'
 
 
 @dataclass
-class NewB3:
+class NoticiaB3:
     def __init__(self, _dict: dict):
-        self.raw_dict = _dict
+        self.informacoes = _dict
         self.id_agencia = _dict['IdAgencia']
-        self.content = _dict['content']
-        self.date_time = _dict['dateTime']
-        self.headline = _dict['headline']
+        self.conteudo = _dict['content']
+        self.data_hora = _dict['dateTime']
+        self.titulo = _dict['headline']
         self.id = _dict['id']
 
         try:
-            self.title = ''.join(_dict['headline'].split('-')[1:])
+            self.titulo = ''.join(_dict['headline'].split('-')[1:])
         except IndexError:
-            self.title = 'na'
+            self.titulo = 'na'
 
         try:
-            self.company = _dict['headline'].split(' - ')[0]
+            self.empresa = _dict['headline'].split(' - ')[0]
         except IndexError:
-            self.company = 'na'
+            self.empresa = 'na'
 
         try:
             ticker = re.findall('\((.*?)\)', _dict['headline'])[0]  # type: ignore
@@ -39,24 +39,24 @@ class NewB3:
         except IndexError:
             self.ticker = 'na'
 
-        self.year = int(_dict['dateTime'].split(' ')[0].split('-')[0])
-        self.month = int(_dict['dateTime'].split(' ')[0].split('-')[1])
-        self.day = int(_dict['dateTime'].split(' ')[0].split('-')[2])
-        self.date = datetime.date(self.year, self.month, self.day)
+        self.ano = int(_dict['dateTime'].split(' ')[0].split('-')[0])
+        self.mes = int(_dict['dateTime'].split(' ')[0].split('-')[1])
+        self.dia = int(_dict['dateTime'].split(' ')[0].split('-')[2])
+        self.data = datetime.date(self.ano, self.mes, self.dia)
         self.url = (
             'https://sistemasweb.b3.com.br/PlantaoNoticias/Noticias'
             '/Detail?'
             f'idNoticia={self.id}&'
             f'agencia={self.id_agencia}&'
-            f'dataNoticia={self.date_time.replace(" ", "%20")}'
+            f'dataNoticia={self.data_hora.replace(" ", "%20")}'
         )
 
     def __repr__(self):
-        return f'<NewB3 - {" - ".join([str(self.id), self.headline, self.date_time])}>'
+        return f'<NoticiaB3 - {" - ".join([str(self.id), self.titulo, self.data_hora])}>'
 
 
-def _request(start: str, end: str) -> str:
-    url = URL + (f'ListarTitulosNoticias?agencia=18&palavra=&dataInicial={start}&dataFinal={end}')
+def _request(inicio: str, fim: str) -> requests.Response:
+    url = URL + (f'ListarTitulosNoticias?agencia=18&palavra=&dataInicial={inicio}&dataFinal={fim}')
 
     r = requests.get(url, verify=False)
     r.raise_for_status()
@@ -64,24 +64,24 @@ def _request(start: str, end: str) -> str:
 
 
 def get(
-    start: str | datetime.date | None = None,
-    end: str | datetime.date | None = None,
-) -> list[NewB3]:
-    if isinstance(start, datetime.date):
-        start = start.isoformat()
-    if isinstance(end, datetime.date):
-        end = end.isoformat()
+    inicio: str | datetime.date | None = None,
+    fim: str | datetime.date | None = None,
+) -> list[NoticiaB3]:
+    if isinstance(inicio, datetime.date):
+        inicio = inicio.isoformat()
+    if isinstance(fim, datetime.date):
+        fim = fim.isoformat()
 
-    if start is None:
-        start = datetime.date.today().isoformat()
-    if end is None:
-        end = datetime.date.today().isoformat()
+    if inicio is None:
+        inicio = datetime.date.today().isoformat()
+    if fim is None:
+        fim = datetime.date.today().isoformat()
 
-    response = _request(start, end)
-    if response.status_code == 200:
-        news = []
-        for new in response.json():
-            news.append(NewB3(new['NwsMsg']))
-        return news
+    r = _request(inicio, fim)
+    if r.status_code == 200:
+        noticias = []
+        for noticia in r.json():
+            noticias.append(NoticiaB3(noticia['NwsMsg']))
+        return noticias
     else:
-        return response.json()
+        return r.json()

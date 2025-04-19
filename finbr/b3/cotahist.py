@@ -228,7 +228,7 @@ def _read_bytes(dados: bytes | io.BytesIO) -> pl.DataFrame:
 
 
 def get_ano(ano: int, ssl_error: bool = False) -> pd.DataFrame:
-    """Obtém dados históricos da B3 para o ano inteiro especificado.
+    """Obtém o arquivo COTAHIST da B3 para o ano inteiro especificado.
     Para dados anteriores a 2014, a B3 não possui mais arquivos diários, apenas anuais.
 
     Parâmetros
@@ -241,7 +241,7 @@ def get_ano(ano: int, ssl_error: bool = False) -> pd.DataFrame:
     Retorna
     -------
     pandas.DataFrame
-        DataFrame contendo dados históricos da B3.
+        DataFrame contendo o arquivo COTAHIST da B3.
     """
     bytes_data = _requests_get_txt_anual(ano, ssl_error=ssl_error)
     df_polars = _read_bytes(bytes_data)
@@ -249,7 +249,7 @@ def get_ano(ano: int, ssl_error: bool = False) -> pd.DataFrame:
 
 
 def get(data: datetime.date | str, ssl_error: bool = False) -> pd.DataFrame:
-    """Obtém dados históricos da B3 para uma data específica via download.
+    """Obtém o arquivo COTAHIST da B3 para uma data específica via download.
 
     Parâmetros
     ----------
@@ -261,7 +261,7 @@ def get(data: datetime.date | str, ssl_error: bool = False) -> pd.DataFrame:
     Retorna
     -------
     pandas.DataFrame
-        DataFrame contendo dados históricos da B3.
+        DataFrame contendo o arquivo COTAHIST da B3.
     """
     if isinstance(data, str):
         data = datetime.datetime.strptime(data, '%Y-%m-%d').date()
@@ -271,7 +271,7 @@ def get(data: datetime.date | str, ssl_error: bool = False) -> pd.DataFrame:
 
 
 def read_bytes(dados: bytes | io.BytesIO) -> pd.DataFrame:
-    """Lê dados históricos da B3 a partir de bytes ou BytesIO.
+    """Lê o arquivo COTAHIST da B3 a partir de bytes ou BytesIO.
 
     Parâmetros
     ----------
@@ -288,7 +288,7 @@ def read_bytes(dados: bytes | io.BytesIO) -> pd.DataFrame:
 
 
 def read_zip(path: str | Path) -> pd.DataFrame:
-    """Lê dados históricos da B3 a partir de um arquivo ZIP.
+    """Lê o arquivo COTAHIST da B3 a partir de um arquivo ZIP.
 
     Parâmetros
     ----------
@@ -307,7 +307,7 @@ def read_zip(path: str | Path) -> pd.DataFrame:
 
 
 def read_txt(path: str | Path) -> pd.DataFrame:
-    """Lê dados históricos da B3 a partir de um arquivo TXT.
+    """Lê o arquivo COTAHIST da B3 a partir de um arquivo TXT.
 
     Parâmetros
     ----------

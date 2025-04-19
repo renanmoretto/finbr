@@ -1,3 +1,3 @@
-bmf_letters = 'FGHJKMNQUVXZ'
-option_letters_call = 'ABCDEFGHIJKL'
-option_letters_put = 'MNOPQRSTUVWX'
+letras_bmf = 'FGHJKMNQUVXZ'
+letras_opcoes_call = 'ABCDEFGHIJKL'
+letras_opcoes_put = 'MNOPQRSTUVWX'

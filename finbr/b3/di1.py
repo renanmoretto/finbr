@@ -6,8 +6,8 @@ from typing import Callable, Any
 import finbr.dias_uteis as dus
 
 
-DI_FINAL_NOMINAL_VALUE = 100_000
-_CONTRATO_MES = {
+DI_VALOR_NOMINAL = 100_000
+_LETRA_CONTRATO_MES = {
     'F': 1,
     'G': 2,
     'H': 3,
@@ -29,14 +29,7 @@ def verifica_ticker(ticker: str):
     Parâmetros
     ----------
     ticker : str
-        O ticker a ser verificado. Deve ter 6 caracteres, começar com 'DI1',
-        seguido por uma letra de contrato válida e 2 dígitos.
-
-    Exceções
-    --------
-    ValueError
-        Se o tamanho do ticker não for 6, não começar com 'DI1', tiver uma letra
-        de contrato inválida ou não terminar com 2 dígitos.
+        O ticker a ser verificado.
 
     Exemplos
     --------
@@ -50,7 +43,7 @@ def verifica_ticker(ticker: str):
     if ticker[:3] != 'DI1':
         raise ValueError("ticker needs to start with 'DI1', got {ticker[:3]}")
 
-    if ticker[3] not in _CONTRATO_MES.keys():
+    if ticker[3] not in _LETRA_CONTRATO_MES.keys():
         raise ValueError(f'invalid ticker contract letter: {ticker[3]}')
 
     if not ticker[-2:].isdigit():
@@ -86,7 +79,7 @@ def vencimento(ticker: str) -> datetime.date:
     >>> vencimento('DI1X25')  # Retorna a data do primeiro dia útil de novembro de 2025
     """
     contrato = ticker[3]
-    mes = _CONTRATO_MES[contrato]
+    mes = _LETRA_CONTRATO_MES[contrato]
     ano = int('20' + ticker[-2:])
 
     data = datetime.date(ano, mes, 1)
@@ -134,12 +127,12 @@ def dias_vencimento(
 
 
 @_verifica_ticker
-def preco_unico(
+def preco_unitario(
     ticker: str,
     taxa: float,
     data: datetime.date | None = None,
 ) -> float:
-    """Calcula o preço (PU) de um contrato DI1.
+    """Calcula o preço unitário (PU) de um contrato DI1.
 
     Parâmetros
     ----------
@@ -153,42 +146,42 @@ def preco_unico(
     Retorna
     -------
     float
-        O preço (PU) do contrato, arredondado para 2 casas decimais.
+        O preço unitário (PU) do contrato, arredondado para 2 casas decimais.
 
     Exemplos
     --------
-    >>> preco_unico('DI1F24', 0.10)  # Preço para o contrato de janeiro de 2024 a 10% a.a.
-    >>> preco_unico('DI1X25', 0.12, data=datetime.date(2023, 12, 1))  # Preço para data específica
+    >>> preco_unitario('DI1F24', 0.10)  # Preço para o contrato de janeiro de 2024 a 10% a.a.
+    >>> preco_unitario('DI1X25', 0.12, data=datetime.date(2023, 12, 1))  # Preço para data específica
     """
     if not data:
         data = datetime.date.today()
 
     dias = dias_vencimento(ticker=ticker, data=data)
-    _pu = DI_FINAL_NOMINAL_VALUE / ((1 + taxa) ** (dias / 252))
+    _pu = DI_VALOR_NOMINAL / ((1 + taxa) ** (dias / 252))
     return round(_pu, 2)
 
 
 @_verifica_ticker
 def taxa(
     ticker: str,
-    preco_unico: float,
+    preco_unitario: float,
     data: datetime.date | None = None,
 ) -> float:
-    """Calcula a taxa de juros de um contrato DI1 dado seu preço.
+    """Calcula a taxa de um contrato DI1 dado seu preço.
 
     Parâmetros
     ----------
     ticker : str
         O ticker DI1 para calcular a taxa.
-    preco_unico : float
-        O preço do contrato.
+    preco_unitario : float
+        O preço unitário (PU) do contrato.
     data : datetime.date, opcional
         A data de referência para o cálculo. Se None, usa a data de hoje.
 
     Retorna
     -------
     float
-        A taxa de juros em formato decimal, arredondada para 5 casas decimais.
+        A taxa em formato decimal, arredondada para 5 casas decimais.
 
     Exemplos
     --------
@@ -199,7 +192,7 @@ def taxa(
         data = datetime.date.today()
 
     dias = dias_vencimento(ticker=ticker, data=data)
-    taxa = math.exp((252 / dias) * math.log(DI_FINAL_NOMINAL_VALUE / preco_unico)) - 1
+    taxa = math.exp((252 / dias) * math.log(DI_VALOR_NOMINAL / preco_unitario)) - 1
     return round(taxa, 5)
 
 
@@ -233,6 +226,6 @@ def dv01(
     if not data:
         data = datetime.date.today()
 
-    _preco = preco_unico(ticker, taxa, data)
-    _preco1 = preco_unico(ticker, taxa + 0.0001, data)
+    _preco = preco_unitario(ticker, taxa, data)
+    _preco1 = preco_unitario(ticker, taxa + 0.0001, data)
     return round(_preco - _preco1, 2)

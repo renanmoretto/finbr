@@ -7,7 +7,7 @@ from finbr.b3 import di1
 
 class TestTickerVerifier(TestCase):
     def test_random_tickers(self):
-        letters = list(di1._CONTRATO_MES.keys())
+        letters = list(di1._LETRA_CONTRATO_MES.keys())
         tickers = [f'DI1{letter}{random.randint(10, 99)}' for letter in letters]
         for ticker in tickers:
             di1.verifica_ticker(ticker)
@@ -25,7 +25,7 @@ class TestTickerVerifier(TestCase):
             di1.verifica_ticker('DI1F3A')
 
 
-class TestDIUtils(TestCase):
+class TestDI1(TestCase):
     def test_maturity_date(self):
         assert di1.vencimento('DI1F30') == datetime.date(2030, 1, 2)
         assert di1.vencimento('DI1N25') == datetime.date(2025, 7, 1)
@@ -34,17 +34,17 @@ class TestDIUtils(TestCase):
         assert di1.vencimento('DI1J26') == datetime.date(2026, 4, 1)
         assert di1.vencimento('DI1H24') == datetime.date(2024, 3, 1)
 
-    def test_price_date_none(self):
-        pu = di1.preco_unico('DI1F30', 0.1140)
+    def test_pu_date_none(self):
+        pu = di1.preco_unitario('DI1F30', 0.1140)
         assert isinstance(pu, float)
         assert pu > 0
-        assert pu <= di1.DI_FINAL_NOMINAL_VALUE
+        assert pu <= di1.DI_VALOR_NOMINAL
 
-    def test_price_with_date(self):
-        pu = di1.preco_unico('DI1F30', 0.1140, datetime.date(2024, 4, 24))
+    def test_pu_with_date(self):
+        pu = di1.preco_unitario('DI1F30', 0.1140, datetime.date(2024, 4, 24))
         assert isinstance(pu, float)
         assert pu > 0
-        assert pu <= di1.DI_FINAL_NOMINAL_VALUE
+        assert pu <= di1.DI_VALOR_NOMINAL
         assert pu == 54332.72
 
     def test_rate_without_date(self):

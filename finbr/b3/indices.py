@@ -84,48 +84,47 @@ def _get_index_first_year(index: str) -> int:
 
 
 def get(
-    index: str,
-    start_year: int | None = None,
-    end_year: int | None = None,
+    indice: str,
+    ano_inicio: int | None = None,
+    ano_fim: int | None = None,
 ) -> pd.DataFrame:
     """
-    Retrieve historical price data for a B3 index.
+    Faz o download dos dados históricos de preços para um índice da B3.
 
-    This function fetches historical price data for a specified B3 index (such as IBOV, SMLL, IDIV)
-    for the given year range. If no range is specified, it will fetch all available data from the
-    first year the index was available up to the current year.
+    Esta função busca dados históricos de preços para um índice B3 especificado (como IBOV, SMLL, IDIV)
+    para o intervalo de anos fornecido. Se nenhum intervalo for especificado, buscará todos os dados disponíveis.
 
-    Parameters
+    Parâmetros
     ----------
-    index : str
-        The index code (e.g., 'IBOV' for Ibovespa, 'SMLL' for Small Caps, 'IDIV' for Dividends, etc).
-    start_year : int, optional
-        The first year to include in the data. If None, starts from the first available year.
-    end_year : int, optional
-        The last year to include in the data. If None, ends at the current year.
+    indice : str
+        O código do índice (ex.: 'IBOV' para Ibovespa, 'SMLL' para Small Caps, 'IDIV' para Dividendos, etc).
+    ano_inicio : int, opcional
+        O primeiro ano a ser incluído nos dados. Se None, começa do primeiro ano disponível.
+    ano_fim : int, opcional
+        O último ano a ser incluído nos dados. Se None, termina no ano atual.
 
-    Returns
+    Retorno
     -------
     pd.DataFrame
-        A DataFrame containing the historical price data with dates as index and the index values
-        as a column named after the index (lowercase).
+        Um DataFrame contendo os dados históricos de preços com datas como índice e os valores do índice
+        em uma coluna nomeada conforme o índice (em minúsculo).
 
-    Examples
+    Exemplos
     --------
     >>> ibov = get('IBOV')
-    >>> ibov_recent = get('IBOV', start_year=2020)
-    >>> small_caps = get('SMLL', start_year=2015, end_year=2023)
+    >>> ibov_2020 = get('IBOV', ano_inicio=2020)
+    >>> small_caps = get('SMLL', ano_inicio=2015, ano_fim=2023)
     """
-    if end_year is None:
-        end_year = datetime.date.today().year + 1
+    if ano_fim is None:
+        ano_fim = datetime.date.today().year + 1
 
-    if start_year is None:
-        start_year = _get_index_first_year(index)
+    if ano_inicio is None:
+        ano_inicio = _get_index_first_year(indice)
 
     data = {}
-    for year in range(start_year, end_year):
+    for year in range(ano_inicio, ano_fim):
         try:
-            year_data = _get_data(index, year)
+            year_data = _get_data(indice, year)
             data.update(year_data)
         except ValueError:
             continue
@@ -133,5 +132,5 @@ def get(
     df = pd.Series(data).to_frame()
     df.index = pd.to_datetime(df.index)
     df.index.name = 'date'
-    df.columns = [index.lower()]
+    df.columns = [indice.lower()]
     return df
