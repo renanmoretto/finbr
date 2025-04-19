@@ -1,21 +1,21 @@
 import datetime
 
-from .base import Holiday
-from .holidays import NATIONAL_HOLIDAYS
+from .base import Feriado
+from .feriados import FERIADOS_NACIONAIS
 
 
-def _get_year_holidays(year: int, holidays: list[Holiday]) -> list[datetime.date]:
+def _feriados_ano(year: int, holidays: list[Feriado]) -> list[datetime.date]:
     holidays_dates = []
     for holiday in holidays:
-        holiday_date = holiday.calc_for_year(year)
+        holiday_date = holiday.calc_para_ano(year)
         if holiday_date is not None:
             holidays_dates.append(holiday_date)
     return holidays_dates
 
 
-def _get_year_dus(year: int, holidays: list[Holiday] | None = None) -> list[datetime.date]:
+def _dus_ano(year: int, holidays: list[Feriado] | None = None) -> list[datetime.date]:
     if holidays:
-        year_holidays = _get_year_holidays(year, holidays)
+        year_holidays = _feriados_ano(year, holidays)
     else:
         year_holidays = []
     date = datetime.date(year, 1, 1)
@@ -28,7 +28,7 @@ def _get_year_dus(year: int, holidays: list[Holiday] | None = None) -> list[date
     return dates
 
 
-def _get_years_between_two_dates(start_date: datetime.date, end_date: datetime.date) -> list[int]:
+def _anos_entre_duas_datas(start_date: datetime.date, end_date: datetime.date) -> list[int]:
     if end_date > start_date:
         years = [year for year in range(start_date.year, end_date.year + 1)]
     else:
@@ -39,207 +39,206 @@ def _get_years_between_two_dates(start_date: datetime.date, end_date: datetime.d
 def _get_all_dus_for_years(years: list[int]) -> list[datetime.date]:
     all_dus = []
     for year in years:
-        all_dus += _get_year_dus(year, NATIONAL_HOLIDAYS)
+        all_dus += _dus_ano(year, FERIADOS_NACIONAIS)
     return all_dus
 
 
 def _find_du(start_date: datetime.date, direction: int) -> datetime.date:
     date = start_date
-    while not is_du(date):
+    while not dia_util(date):
         date += datetime.timedelta(days=direction)
     return date
 
 
-def is_du(date: datetime.date) -> bool:
+def dia_util(data: datetime.date) -> bool:
     """
-    Checks if a given date is a business day.
+    Verifica se uma data é um dia útil.
 
-    Parameters
+    Parâmetros
     ----------
     date : datetime.date
-        The date to be checked.
+        A data a ser verificada.
 
-    Returns
+    Retorna
     -------
     bool
-        Returns True if the date is a business day, False otherwise.
+        Retorna True se a data for um dia útil, False caso contrário.
     """
-    if isinstance(date, datetime.datetime):
-        date = date.date()
-    year_dus = _get_year_dus(date.year, NATIONAL_HOLIDAYS)
-    if date in year_dus:
+    if isinstance(data, datetime.datetime):
+        data = data.date()
+    year_dus = _dus_ano(data.year, FERIADOS_NACIONAIS)
+    if data in year_dus:
         return True
     return False
 
 
-def is_holiday(date: datetime.date) -> bool:
+def feriado(data: datetime.date) -> bool:
     """
-    Checks if a given date is a holiday.
+    Verifica se uma data é um feriado.
 
-    Parameters
+    Parâmetros
     ----------
     date : datetime.date
-        The date to be checked.
+        A data a ser verificada.
 
-    Returns
+    Retorna
     -------
     bool
-        Returns True if the date is a holiday, False otherwise.
+        Retorna True se a data for um feriado, False caso contrário.
     """
-    holidays = _get_year_holidays(date.year, NATIONAL_HOLIDAYS)
-    if date in holidays:
+    feriados = _feriados_ano(data.year, FERIADOS_NACIONAIS)
+    if data in feriados:
         return True
     return False
 
 
-def delta_du(from_date: datetime.date, days_delta: int) -> datetime.date:
+def delta(data: datetime.date, dias: int) -> datetime.date:
     """
-    Calculates the date a certain number of business days from a specified date.
+    Calcula a data a um certo número de dias úteis a partir de uma data especificada.
 
-    Parameters
+    Parâmetros
     ----------
     from_date : datetime.date
-        The starting date.
+        A data inicial.
     days_delta : int
-        The number of business days to be added to from_date.
+        O número de dias úteis a serem somados à data inicial.
 
-    Returns
+    Retorna
     -------
     datetime.date
-        The calculated business day date.
+        A data útil calculada.
     """
-    if not is_du(from_date):
-        raise ValueError("'date' is not a business day")
+    if not dia_util(data):
+        raise ValueError("'data' is not a business day")
 
     # days_delta*2 so the bday of the end year is always inside the list all_dus
-    start_calendar_date = from_date + datetime.timedelta(days=-days_delta * 4)
-    end_calendar_date = from_date + datetime.timedelta(days=days_delta * 4)
-    years = _get_years_between_two_dates(start_calendar_date, end_calendar_date)
-    all_dus = _get_all_dus_for_years(years)
+    start_calendar_date = data + datetime.timedelta(days=-dias * 4)
+    end_calendar_date = data + datetime.timedelta(days=dias * 4)
+    anos = _anos_entre_duas_datas(start_calendar_date, end_calendar_date)
+    dus = _get_all_dus_for_years(anos)
 
-    date_position = all_dus.index(from_date)
-    return all_dus[date_position + days_delta]
+    posicao_data = dus.index(data)
+    return dus[posicao_data + dias]
 
 
-def last_du(date: datetime.date | None = None) -> datetime.date:
+def ultimo(data: datetime.date | None = None) -> datetime.date:
     """
-    Finds the last business day relative to today.
+    Encontra o último dia útil relativo a hoje.
 
-    Returns
+    Retorna
     -------
     datetime.date
-        The date of the last business day.
+        A data do último dia útil.
     """
-    if not date:
-        date = datetime.date.today()
+    if not data:
+        data = datetime.date.today()
 
-    if not is_du(date):
-        date = _find_du(date, 1)  # find next du
+    if not dia_util(data):
+        data = _find_du(data, 1)  # find next du
 
-    return delta_du(date, -1)
+    return delta(data, -1)
 
 
-def next_du(date: datetime.date | None = None) -> datetime.date:
+def proximo(data: datetime.date | None = None) -> datetime.date:
     """
-    Finds the next business day relative to today.
+    Encontra o próximo dia útil relativo a hoje.
 
-    Returns
+    Retorna
     -------
     datetime.date
-        The date of the next business day.
+        A data do próximo dia útil.
     """
-    if not date:
-        date = datetime.date.today()
+    if not data:
+        data = datetime.date.today()
 
-    if not is_du(date):
-        date = _find_du(date, -1)  # find last du
+    if not dia_util(data):
+        data = _find_du(data, -1)  # find last du
 
-    return delta_du(date, 1)
+    return delta(data, 1)
 
 
-def range_du(
-    start: datetime.date,
-    end: datetime.date,
-    include_end: bool = False,
+def intervalo(
+    inicio: datetime.date,
+    fim: datetime.date,
+    incluir_fim: bool = False,
 ) -> list[datetime.date]:
     """
-    Returns a list of business days within a specified range.
+    Retorna uma lista de dias úteis dentro de um intervalo especificado.
 
-    Parameters
+    Parâmetros
     ----------
     start : datetime.date
-        The start date of the range.
+        Data inicial do intervalo.
     end : datetime.date
-        The end date of the range.
-    include_end : bool, optional
-        If True, includes the end date in the range interval, default False.
-        By default, Python's range() is closed on the start and open on the
-        end of the interval, like [i,f[.
+        Data final do intervalo.
+    include_end : bool, opcional
+        Se True, inclui a data final no intervalo, padrão False.
+        Por padrão, o range() do Python é fechado no início e aberto no fim do intervalo, como [i,f[.
 
-    Returns
+    Retorna
     -------
     list[datetime.date]
-        A list of business days within the specified range.
+        Uma lista de dias úteis dentro do intervalo especificado.
     """
-    years = _get_years_between_two_dates(start, end)
-    all_dus = _get_all_dus_for_years(years)
-    if include_end:
-        return [du for du in all_dus if du >= start and du <= end]
+    anos = _anos_entre_duas_datas(inicio, fim)
+    dus = _get_all_dus_for_years(anos)
+    if incluir_fim:
+        return [du for du in dus if du >= inicio and du <= fim]
     else:
-        return [du for du in all_dus if du >= start and du < end]
+        return [du for du in dus if du >= inicio and du < fim]
 
 
-def year_dus(year: int) -> list[datetime.date]:
+def dias_uteis_ano(ano: int) -> list[datetime.date]:
     """
-    Returns a list of all business days for a given year.
+    Retorna uma lista de todos os dias úteis de um determinado ano.
 
-    Parameters
+    Parâmetros
     ----------
     year : int
-        The year for which to calculate the business days.
+        O ano para o qual calcular os dias úteis.
 
-    Returns
+    Retorna
     -------
     list[datetime.date]
-        A list containing all business days in the specified year.
+        Uma lista contendo todos os dias úteis do ano especificado.
     """
-    return range_du(datetime.date(year, 1, 1), datetime.date(year, 12, 31), True)
+    return intervalo(datetime.date(ano, 1, 1), datetime.date(ano, 12, 31), True)
 
 
-def year_holidays(year: int) -> list[datetime.date]:
+def feriados_ano(ano: int) -> list[datetime.date]:
     """
-    Returns a list of all holidays for a given year.
+    Retorna uma lista de todos os feriados de um determinado ano.
 
-    If holidays are defined in the object, this method returns a list of those holidays
-    for the specified year. If no holidays are defined, returns an empty list.
+    Se houver feriados definidos no objeto, este método retorna uma lista desses feriados
+    para o ano especificado. Se não houver feriados definidos, retorna uma lista vazia.
 
-    Parameters
+    Parâmetros
     ----------
     year : int
-        The year for which to retrieve the holidays.
+        O ano para o qual recuperar os feriados.
 
-    Returns
+    Retorna
     -------
     list[datetime.date]
-        A list containing all holidays for the specified year, or an empty list if
-        no holidays are defined.
+        Uma lista contendo todos os feriados do ano especificado, ou uma lista vazia se
+        não houver feriados definidos.
     """
-    return _get_year_holidays(year, NATIONAL_HOLIDAYS)
+    return _feriados_ano(ano, FERIADOS_NACIONAIS)
 
 
-def diff(a: datetime.date, b: datetime.date) -> int:
+def dif(a: datetime.date, b: datetime.date) -> int:
     """
-    Calculates the number of business days between two dates (b-a).
+    Calcula o número de dias úteis entre duas datas (b-a).
 
-    Parameters
+    Parâmetros
     ----------
     a : datetime.date
     b : datetime.date
 
-    Returns
+    Retorna
     -------
     int
-        Number of business days between dates 'a' and 'b'.
+        Número de dias úteis entre as datas 'a' e 'b'.
     """
     _years = {a.year, b.year}
     years = list(range(min(_years), max(_years) + 1))

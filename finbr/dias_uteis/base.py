@@ -2,97 +2,97 @@ import datetime
 from typing import Callable
 
 
-class Holiday:
+class Feriado:
     """
-    A class representing a holiday.
+    Uma classe que representa um feriado.
 
-    Parameters
+    Parâmetros
     ----------
-    month : int, optional
-        The month when the holiday occurs if it's a fixed date, default None.
-    day : int, optional
-        The day of the month when the holiday occurs if it's a fixed date, default None.
-    func : Callable[[int], datetime.date], optional
-        A function that takes a year as an argument and returns the date of the holiday for
-        that year if it's a dynamic date, default None.
-    start_year : int, optional
-        The year when the holiday starts to occur, default None. This is not used for dynamic holidays.
-    end_year : int, optional
-        The year when the holiday stops to occur, default None. This is not used for dynamic holidays.
-        Note: This year will be considered as the last year the holiday will occur.
+    mes : int, opcional
+        O mês em que o feriado ocorre se for uma data fixa, padrão None.
+    dia : int, opcional
+        O dia do mês em que o feriado ocorre se for uma data fixa, padrão None.
+    func : Callable[[int], datetime.date], opcional
+        Uma função que recebe um ano como argumento e retorna a data do feriado para
+        aquele ano se for uma data dinâmica, padrão None.
+    ano_inicio : int, opcional
+        O ano em que o feriado começa a ocorrer, padrão None. Não é usado para feriados dinâmicos.
+    ano_fim : int, opcional
+        O ano em que o feriado deixa de ocorrer, padrão None. Não é usado para feriados dinâmicos.
+        Nota: Este ano será considerado como o último ano em que o feriado ocorrerá.
 
-    Methods
+    Métodos
     -------
-    calc_for_year(year: int) -> datetime.date
-        Calculate the date of the holiday for the given year.
+    calc_para_ano(ano: int) -> datetime.date
+        Calcula a data do feriado para o ano fornecido.
 
-    Notes
+    Notas
     -----
-        'func' will be ignored if 'day' and 'month' are provided. The holiday's
-        type in this case will be 'fixed'.
+        'func' será ignorado se 'dia' e 'mes' forem fornecidos. O tipo do feriado
+        neste caso será 'fixo'.
 
-        If 'func' is provided and 'day' or 'month' is None, the holiday's type
-        will be 'dynamic'.
+        Se 'func' for fornecida e 'dia' ou 'mes' for None, o tipo do feriado
+        será 'dinâmico'.
     """
 
     def __init__(
         self,
-        month: int | None = None,
-        day: int | None = None,
+        mes: int | None = None,
+        dia: int | None = None,
         func: Callable[[int], datetime.date] | None = None,
-        start_year: int | None = None,
-        end_year: int | None = None,
+        ano_inicio: int | None = None,
+        ano_fim: int | None = None,
     ):
-        _month_day_passed = month is not None and day is not None
-        if _month_day_passed:
-            if not isinstance(month, int) or not isinstance(day, int):
-                raise TypeError("'month' and 'day' types must be int")
+        _mes_dia_passado = mes is not None and dia is not None
+        if _mes_dia_passado:
+            if not isinstance(mes, int) or not isinstance(dia, int):
+                raise TypeError("'mes' e 'dia' devem ser do tipo int")
 
-            # Validating month/day values
-            _year_for_validation = datetime.date.today().year
-            datetime.date(_year_for_validation, month, day)
+            # Validação dos valores de mês/dia
+            _ano_para_validacao = datetime.date.today().year
+            datetime.date(_ano_para_validacao, mes, dia)
 
-            _type = 'fixed'
+            _tipo = 'fixo'
         else:
             if func is None:
-                raise ValueError("'func' is required if 'month' and 'day' are both None")
+                raise ValueError("'func' é obrigatório se 'mes' e 'dia' forem ambos None")
             if not callable(func):
-                raise TypeError("'func' must be a callable")
-            _type = 'dynamic'
+                raise TypeError("'func' deve ser uma função")
+            _tipo = 'dinamico'
 
-        self.month = month
-        self.day = day
+        self.mes = mes
+        self.dia = dia
         self.func = func
-        self.start_year = start_year
-        self.end_year = end_year
-        self._type = _type
+        self.ano_inicio = ano_inicio
+        self.ano_fim = ano_fim
+        self._tipo = _tipo
 
-    def calc_for_year(self, year: int) -> datetime.date | None:
+    def calc_para_ano(self, ano: int) -> datetime.date | None:
         """
-        Calculate the exact date of the holiday for the specified year.
+        Calcula a data exata do feriado para o ano especificado.
 
-        Parameters
+        Parâmetros
         ----------
-        year : int
-            The year to calculate the holiday's date.
+        ano : int
+            O ano para calcular a data do feriado.
 
-        Returns
+        Retorna
         -------
         datetime.date
-            The date of the holiday for the specified year.
+            A data do feriado para o ano especificado.
         """
-        # Just to validate the year value.
-        # Values like -5 or 60000 are invalid.
-        datetime.date(year, 1, 1)
+        # Apenas para validar o valor do ano.
+        # Valores como -5 ou 60000 são inválidos.
+        datetime.date(ano, 1, 1)
 
-        if self._type == 'fixed':
-            if self.start_year is not None and year < self.start_year:
+        if self._tipo == 'fixo':
+            if self.ano_inicio is not None and ano < self.ano_inicio:
                 return None
-            if self.end_year is not None and year > self.end_year:
+            if self.ano_fim is not None and ano > self.ano_fim:
                 return None
-            return datetime.date(year, self.month, self.day)  # type: ignore
+            return datetime.date(ano, self.mes, self.dia)  # type: ignore
         else:
-            func_response = self.func(year)  # type: ignore
-            if not isinstance(func_response, datetime.date):
-                raise TypeError("'func' must return a datetime.date")
-            return func_response
+            resposta_func = self.func(ano)  # type: ignore
+            if not isinstance(resposta_func, datetime.date):
+                raise TypeError("'func' deve retornar um datetime.date")
+            return resposta_func

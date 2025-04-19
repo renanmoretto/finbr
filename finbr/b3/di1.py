@@ -84,7 +84,7 @@ def vencimento(ticker: str) -> datetime.date:
 
     data = datetime.date(ano, mes, 1)
     while True:
-        if dus.is_du(data):
+        if dus.dia_util(data):
             break
         data = data + datetime.timedelta(1)
     return data
@@ -121,7 +121,7 @@ def dias_vencimento(
         data = datetime.date.today()
 
     if dias_uteis:
-        return dus.diff(data, vencimento(ticker))
+        return dus.dif(data, vencimento(ticker))
     else:
         return (vencimento(ticker) - data).days
 
