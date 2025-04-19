@@ -15,35 +15,35 @@ DEFAULT_TIMEOUT = 20
 
 
 def _make_chunks(
-    start: datetime.date | None = None,
-    end: datetime.date | None = None,
+    inicio: datetime.date | None = None,
+    fim: datetime.date | None = None,
     chunk_size: int = 360 * 10,
 ) -> Generator[tuple[datetime.date, datetime.date], None, None]:
     """chunk_size is in number of days"""
-    start = start or datetime.date(1900, 1, 1)
-    end = end or datetime.date.today()
+    inicio = inicio or datetime.date(1900, 1, 1)
+    fim = fim or datetime.date.today()
 
     # check if range fits chunk size
-    date_range = end - start
+    date_range = fim - inicio
     if date_range.days <= chunk_size:
-        yield start, end
+        yield inicio, fim
         return
 
-    chunk_start = end - datetime.timedelta(days=chunk_size)
-    chunk_end = end
-    while chunk_start >= start:
-        yield chunk_start, chunk_end
-        chunk_end = chunk_start - datetime.timedelta(days=1)
-        chunk_start = chunk_start - datetime.timedelta(days=chunk_size)
+    chunk_inicio = fim - datetime.timedelta(days=chunk_size)
+    chunk_fim = fim
+    while chunk_inicio >= inicio:
+        yield chunk_inicio, chunk_fim
+        chunk_fim = chunk_inicio - datetime.timedelta(days=1)
+        chunk_inicio = chunk_inicio - datetime.timedelta(days=chunk_size)
 
-    yield start, chunk_end
+    yield inicio, chunk_fim
 
 
 def _get_data_in_chunks(
-    code: int,
-    start: datetime.date | None = None,
-    end: datetime.date | None = None,
-    timeout: int = DEFAULT_TIMEOUT,  # lower than 20 will cause timeout errors, sgs api sometimes is slow
+    codigo: int,
+    inicio: datetime.date | None = None,
+    fim: datetime.date | None = None,
+    timeout: int = DEFAULT_TIMEOUT,
     session: requests.Session | None = None,
 ) -> list[dict]:
     def _safe_get(url, session, timeout=DEFAULT_TIMEOUT, retries=3, backoff=2):
@@ -58,14 +58,16 @@ def _get_data_in_chunks(
         session = requests.Session()
 
     data = []
-    for chunk_start, chunk_end in _make_chunks(start, end):
-        url = f'{_URL}/dados/serie/bcdata.sgs.{code}/dados?formato=json&dataInicial={chunk_start:%d/%m/%Y}&dataFinal={chunk_end:%d/%m/%Y}'
+    for chunk_inicio, chunk_fim in _make_chunks(inicio, fim):
+        url = f'{_URL}/dados/serie/bcdata.sgs.{codigo}/dados?formato=json&dataInicial={chunk_inicio:%d/%m/%Y}&dataFinal={chunk_fim:%d/%m/%Y}'
 
-        # sometimes sgs api is slow to respond, so we need to retry
-        # but after the first try, it will be faster
+        # às vezes a API do sgs é lenta para responder, então precisamos tentar novamente
+        # mas após a primeira tentativa, geralmente será mais rápido
         response = _safe_get(url, session, timeout=timeout)
 
-        if response.status_code == 404:  # 404 means the series is not found, so we can break
+        if (
+            response.status_code == 404
+        ):  # 404 significa que a série não foi encontrada, então podemos interromper
             break
 
         if response.status_code != 200:
@@ -76,7 +78,7 @@ def _get_data_in_chunks(
 
     session.close()
 
-    # sort data by date
+    # ordena os dados pela data
     sorted_data = (
         pl.DataFrame(data)
         .with_columns(data_dt=pl.col('data').str.strptime(pl.Datetime, '%d/%m/%Y'))
@@ -89,16 +91,16 @@ def _get_data_in_chunks(
 
 
 def _get_raw_data(
-    code: int,
-    start: datetime.date | None = None,
-    end: datetime.date | None = None,
+    codigo: int,
+    inicio: datetime.date | None = None,
+    fim: datetime.date | None = None,
     timeout: int = DEFAULT_TIMEOUT,
     session: requests.Session | None = None,
 ) -> list[dict]:
-    start_str = start.strftime('%d/%m/%Y') if start else ''
-    end_str = end.strftime('%d/%m/%Y') if end else ''
+    inicio_str = inicio.strftime('%d/%m/%Y') if inicio else ''
+    fim_str = fim.strftime('%d/%m/%Y') if fim else ''
 
-    url = f'{_URL}/dados/serie/bcdata.sgs.{code}/dados?formato=json&dataInicial={start_str}&dataFinal={end_str}'
+    url = f'{_URL}/dados/serie/bcdata.sgs.{codigo}/dados?formato=json&dataInicial={inicio_str}&dataFinal={fim_str}'
 
     if session is None:
         response = requests.get(url, timeout=timeout)
@@ -119,48 +121,48 @@ def _get_raw_data(
             and response_json['error']
             == 'O sistema aceita uma janela de consulta de, no máximo, 10 anos em séries de periodicidade diária'
         ):
-            return _get_data_in_chunks(code, start, end, timeout, session)
+            return _get_data_in_chunks(codigo, inicio, fim, timeout, session)
 
     raise ValueError(f'Unexpected response format: {response_json}')
 
 
 def _get_data(
-    code: int,
-    start: datetime.date | None = None,
-    end: datetime.date | None = None,
-    rename_to: str | None = None,
+    codigo: int,
+    inicio: datetime.date | None = None,
+    fim: datetime.date | None = None,
+    renomear_para: str | None = None,
     timeout: int = DEFAULT_TIMEOUT,
     session: requests.Session | None = None,
 ) -> pd.Series:
-    data = _get_raw_data(code, start, end, timeout, session)
-    values = [v['valor'] for v in data]
+    data = _get_raw_data(codigo, inicio, fim, timeout, session)
+    valores = [v['valor'] for v in data]
     s = pd.Series(
-        pd.to_numeric(values),
+        pd.to_numeric(valores),
         index=pd.to_datetime([v['data'] for v in data], format='%d/%m/%Y'),
     )
     s.index.name = 'data'
-    s.name = rename_to or code
+    s.name = renomear_para or codigo
     return s
 
 
 def get(
-    code: int | list[int] | dict[int, str],
-    start: datetime.date | str | None = None,
-    end: datetime.date | str | None = None,
+    codigo: int | list[int] | dict[int, str],
+    inicio: datetime.date | str | None = None,
+    fim: datetime.date | str | None = None,
     timeout: int = DEFAULT_TIMEOUT,
 ) -> pd.DataFrame:
     """Fetch one or multiple time series from the Brazilian Central Bank's SGS as a DataFrame.
 
     Parameters
     ----------
-    code : int or list or dict
+    codigo : int or list or dict
         If int, fetches a single series.
         If list, fetches multiple series using the codes in the list.
         If dict, fetches series using codes as keys and uses the values as column names.
-    start : datetime.date or str, optional
+    inicio : datetime.date or str, optional
         Start date for the series data. If string, must be in 'YYYY-MM-DD' format.
         If None, fetches from the earliest available date.
-    end : datetime.date or str, optional
+    fim : datetime.date or str, optional
         End date for the series data. If string, must be in 'YYYY-MM-DD' format.
         If None, fetches until the latest available date.
     timeout : int, default 20
@@ -181,37 +183,37 @@ def get(
     >>> sgs.get(12, start='2020-01-01')  # From specific start date
     >>> sgs.get(12, start='2015-01-01', end='2020-01-01')  # Date range
     """
-    if isinstance(start, str):
-        start = datetime.datetime.strptime(start, '%Y-%m-%d').date()
-    if isinstance(end, str):
-        end = datetime.datetime.strptime(end, '%Y-%m-%d').date()
+    if isinstance(inicio, str):
+        inicio = datetime.datetime.strptime(inicio, '%Y-%m-%d').date()
+    if isinstance(fim, str):
+        fim = datetime.datetime.strptime(fim, '%Y-%m-%d').date()
 
-    if isinstance(code, int):
-        data = _get_data(code, start, end, timeout=timeout)
+    if isinstance(codigo, int):
+        data = _get_data(codigo, inicio, fim, timeout=timeout)
 
     # on list and dicts, use a session to avoid cookies issues and speed up requests
-    elif isinstance(code, list):
+    elif isinstance(codigo, list):
         with requests.Session() as session:
             data = pd.DataFrame()
-            for c in code:
+            for c in codigo:
                 single_data = _get_data(
                     c,
-                    start,
-                    end,
+                    inicio,
+                    fim,
                     timeout=timeout,
                     session=session,
                 )
                 data = pd.concat([data, single_data], axis=1)
 
-    elif isinstance(code, dict):
+    elif isinstance(codigo, dict):
         with requests.Session() as session:
             data = pd.DataFrame()
-            for c, name in code.items():
+            for c, nome in codigo.items():
                 single_data = _get_data(
                     c,
-                    start,
-                    end,
-                    rename_to=name,
+                    inicio,
+                    fim,
+                    renomear_para=nome,
                     timeout=timeout,
                     session=session,
                 )
@@ -228,7 +230,7 @@ def get(
 # search/metadata
 
 
-def _search(query: int | str, language: str = 'pt') -> requests.Response:
+def _search(query: int | str, idioma: str = 'pt') -> requests.Response:
     url = f'{_URL_SGS_PUB}/localizarseries/localizarSeries.do'
 
     params = {
@@ -265,7 +267,7 @@ def _search(query: int | str, language: str = 'pt') -> requests.Response:
         return response
 
 
-def _parse_metadata_data(r: requests.Response) -> list[dict]:
+def _parse_metadata(r: requests.Response) -> list[dict]:
     soup = BeautifulSoup(r.text, 'html.parser')
     table = soup.find('table', id='tabelaSeries')
     series_data = []
@@ -288,7 +290,7 @@ def _parse_metadata_data(r: requests.Response) -> list[dict]:
     return series_data
 
 
-def search(query: int | str, language: str = 'pt') -> list[dict]:
+def pesquisar(query: int | str, idioma: str = 'pt') -> list[dict]:
     """Search for time series in the Brazilian Central Bank's SGS by code or keyword.
 
     Parameters
@@ -296,7 +298,7 @@ def search(query: int | str, language: str = 'pt') -> list[dict]:
     query : int or str
         If int, searches for a specific series code.
         If str, searches for series containing the keyword in their name.
-    language : str, default "pt"
+    idioma : str, default "pt"
         Language for search interface and results. Options are "pt" for Portuguese or "en" for English.
 
     Returns
@@ -309,32 +311,32 @@ def search(query: int | str, language: str = 'pt') -> list[dict]:
     --------
     >>> sgs.search("cdi")  # Search by keyword
     >>> sgs.search(12)  # Search by code
-    >>> sgs.search("inflation", language="en")  # Search in English
+    >>> sgs.search("inflation", idioma="en")  # Search in English
     """
-    r = _search(query, language)
-    return _parse_metadata_data(r)
+    r = _search(query, idioma)
+    return _parse_metadata(r)
 
 
-def metadata(code: int, language: str = 'pt') -> dict:
+def metadata(codigo: int, idioma: str = 'pt') -> dict:
     """Fetch metadata about a specific time series from the Brazilian Central Bank's SGS.
 
     Parameters
     ----------
-    code : int
-        The code of the series to fetch metadata for.
-    language : str, default "pt"
+    codigo : int
+        The codigo of the series to fetch metadata for.
+    idioma : str, default "pt"
         Language for the metadata results. Options are "pt" for Portuguese or "en" for English.
 
     Returns
     -------
     Dict
         A dictionary containing metadata about the series, including:
-        code, name, unit, frequency, start_date, end_date, source_name, and special.
+        codigo, name, unit, frequency, start_date, end_date, source_name, and special.
 
     Examples
     --------
     >>> sgs.metadata(12)  # Get metadata for CDI series
-    >>> sgs.metadata(433, language="en")  # Get metadata for IPCA series in English
+    >>> sgs.metadata(433, idioma="en")  # Get metadata for IPCA series in English
     """
-    r = _search(code, language)
-    return _parse_metadata_data(r)[0]
+    r = _search(codigo, idioma)
+    return _parse_metadata(r)[0]
