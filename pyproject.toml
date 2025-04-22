@@ -1,11 +1,12 @@
 [project]
 name = "finbr"
 version = "0.2.1"
-description = "Collection of Python utilities for Brazilian financial markets."
+description = "Coleção de utilitários Python para o mercado financeiro brasileiro."
 authors = [
     {name = "Renan Moretto",email = "renan_moretto@outlook.com"}
 ]
 readme = "README.md"
+repository = "https://github.com/renanmoretto/finbr"
 requires-python = ">=3.10"
 dependencies = [
     "pandas (>=2.2.0,<3.0.0)",
