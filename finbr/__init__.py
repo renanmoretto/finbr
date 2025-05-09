@@ -2,6 +2,7 @@ import pandas as pd
 
 from . import b3
 from . import dias_uteis
+from . import dias_uteis as dus  # para "from finbr import dus"
 from . import fundamentus
 from . import sgs
 from . import statusinvest
