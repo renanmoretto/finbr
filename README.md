@@ -143,10 +143,14 @@ O módulo `finbr.b3.indices` permite buscar preços históricos para índices da
 from finbr.b3 import indices
 
 # retorna dados históricos do Ibovespa
-ibov = indices.get('IBOV')
+ibov = indices.preco_historico('IBOV')
 
 # outros índices com intervalo de anos específico
-smll = indices.get('SMLL', ano_inicio=2015, ano_fim=2023)
+smll = indices.preco_historico('SMLL', ano_inicio=2015, ano_fim=2023)
+
+# obtém a composição atual de um índice
+composicao_ibov = indices.composicao('IBOV')  # retorna DataFrame com ações e seus pesos no índice
+composicao_small = indices.composicao('SMLL')  # composição do Small Caps
 
 # Índices disponíveis incluem:
 # - IBOV (Ibovespa)

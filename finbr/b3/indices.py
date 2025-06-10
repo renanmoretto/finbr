@@ -8,6 +8,10 @@ import pandas as pd
 import requests
 
 
+def _encode(data: dict) -> str:
+    return base64.b64encode(json.dumps(data).encode()).decode()
+
+
 def _transform_index_data(df_raw: pd.DataFrame, year: int) -> dict[datetime.date, float]:
     months = {
         'Jan': 1,
@@ -45,7 +49,7 @@ def _transform_index_data(df_raw: pd.DataFrame, year: int) -> dict[datetime.date
 def _get_data(index: str, year: int) -> dict[datetime.date, float]:
     _dic = {'index': index, 'language': 'pt-br', 'year': str(year)}
 
-    b64_string = base64.b64encode(json.dumps(_dic, separators=(',', ':')).encode()).decode()
+    b64_string = _encode(_dic)
     url = f'https://sistemaswebb3-listados.b3.com.br/indexStatisticsProxy/IndexCall/GetDownloadPortfolioDay/{b64_string}'
     r = requests.get(url)
 
@@ -72,7 +76,7 @@ def _get_index_first_year(index: str) -> int:
         'yearEnd': 2025,
     }
 
-    b64_string = base64.b64encode(json.dumps(data, separators=(',', ':')).encode()).decode()
+    b64_string = _encode(data)
     url = f'https://sistemaswebb3-listados.b3.com.br/indexStatisticsProxy/IndexCall/GetYearlyVariation/{b64_string}'
     r = requests.get(url)
     r_json = r.json()
@@ -83,7 +87,7 @@ def _get_index_first_year(index: str) -> int:
     return int(index_first_year)
 
 
-def get(
+def preco_historico(
     indice: str,
     ano_inicio: int | None = None,
     ano_fim: int | None = None,
@@ -111,9 +115,11 @@ def get(
 
     Exemplos
     --------
-    >>> ibov = get('IBOV')
-    >>> ibov_2020 = get('IBOV', ano_inicio=2020)
-    >>> small_caps = get('SMLL', ano_inicio=2015, ano_fim=2023)
+    >>> from finbr.b3 import indices
+
+    >>> ibov = indices.preco_historico('IBOV')
+    >>> ibov_2020 = indices.preco_historico('IBOV', ano_inicio=2020)
+    >>> small_caps = indices.preco_historico('SMLL', ano_inicio=2015, ano_fim=2023)
     """
     if ano_fim is None:
         ano_fim = datetime.date.today().year + 1
@@ -134,3 +140,35 @@ def get(
     df.index.name = 'date'
     df.columns = [indice.lower()]
     return df
+
+
+def composicao(indice: str) -> pd.DataFrame:
+    """
+    Obtém a composição de um índice da B3.
+
+    Esta função busca a composição de um índice B3 especificado (como IBOV, SMLL, IDIV)
+    para o intervalo de anos fornecido. Se nenhum intervalo for especificado, buscará todos os dados disponíveis.
+
+    Parâmetros
+    ----------
+    indice : str
+        O nome do índice B3.
+
+    Retorno
+    -------
+    pd.DataFrame
+        Um DataFrame contendo a composição do índice B3.
+    """
+    data = {
+        'language': 'pt-br',
+        'pageNumber': 1,
+        'pageSize': 200,
+        'index': indice.upper(),
+    }
+
+    b64_string = base64.b64encode(json.dumps(data).encode()).decode()
+    url = f'https://sistemaswebb3-listados.b3.com.br/indexProxy/indexCall/GetPortfolioDay/{b64_string}'
+    r = requests.get(url)
+    r_json = r.json()
+    results = r_json['results']
+    return pd.DataFrame(results).sort_values('part', ascending=False).reset_index(drop=True)
