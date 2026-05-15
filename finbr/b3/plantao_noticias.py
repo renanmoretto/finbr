@@ -58,7 +58,7 @@ class NoticiaB3:
 def _request(inicio: str, fim: str) -> requests.Response:
     url = URL + (f'ListarTitulosNoticias?agencia=18&palavra=&dataInicial={inicio}&dataFinal={fim}')
 
-    r = requests.get(url, verify=False)
+r = requests.get(url, verify=True)
     r.raise_for_status()
     return r
 
