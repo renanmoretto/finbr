@@ -1,3 +1,4 @@
+import requests
 from bs4 import BeautifulSoup
 from typing import Literal
 
@@ -93,15 +94,18 @@ def screener() -> list[dict]:
 
 
 def multiplos(ticker: str) -> dict:
-    path = '/acao/indicatorhistoricallist'
+    url = 'https://statusinvest.com.br/acao/indicatorhistoricallist'
     data = {
         'codes[]': ticker.lower(),
         'time': 5,
-        'byQuarter': False,
-        'futureData': False,
+        'byQuarter': 'false',
+        'futureData': 'false',
     }
-
-    r = _request(path, data)
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+    r = requests.post(url, data=data, headers=headers)
+    r.raise_for_status()
     r_json = r.json()
 
     data = {}
