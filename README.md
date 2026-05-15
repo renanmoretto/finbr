@@ -20,8 +20,6 @@ $ finbr acao PETR4
 
 ## Instalação
 
-> Ainda não publicado no PyPI — por enquanto, instale direto do GitHub.
-
 **Recomendado** (instala `finbr` no PATH globalmente, isolado em venv próprio):
 
 ```bash
@@ -39,8 +37,6 @@ uvx --from git+https://github.com/renanmoretto/finbr finbr macro cdi
 ```bash
 pip install git+https://github.com/renanmoretto/finbr
 ```
-
-Depois de publicado no PyPI, será só `uv tool install finbr` / `uvx finbr ...` / `pip install finbr`.
 
 ## Visão geral dos comandos
 
