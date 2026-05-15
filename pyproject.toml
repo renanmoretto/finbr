@@ -1,12 +1,32 @@
 [project]
 name = "finbr"
-version = "0.2.3"
-description = "Coleção de utilitários Python para o mercado financeiro brasileiro."
+version = "0.3.0"
+description = "CLI (e biblioteca Python) para dados do mercado financeiro brasileiro: ações, índices, macro, B3."
 authors = [
     {name = "Renan Moretto", email = "renan_moretto@outlook.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.10"
+keywords = [
+    "cli", "finance", "brasil", "b3", "bovespa", "ibov",
+    "cdi", "selic", "ipca", "bcb", "sgs", "di1", "cotahist",
+    "fundamentus", "statusinvest", "mercado-financeiro",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Natural Language :: Portuguese (Brazilian)",
+]
 dependencies = [
     "pandas>=2.2.0,<3.0.0",
     "yfinance>=0.2.54,<0.3.0",
