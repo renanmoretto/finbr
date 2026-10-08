@@ -1,4 +1,5 @@
 import datetime
+import warnings
 
 import yfinance as yf
 import pandas as pd
@@ -47,15 +48,18 @@ def precos(
     else:
         tickers_list_with_sa = tickers_list
 
-    data_yf = yf.download(
-        tickers_list_with_sa,
-        period=periodo,
-        interval=intervalo,
-        start=data_inicio,
-        end=data_fim,
-        auto_adjust=ajustado,
-        progress=False,
-    )
+    with warnings.catch_warnings():
+        # yfinance dispara dezenas de FutureWarning do pandas (chained assignment) por download
+        warnings.simplefilter('ignore', FutureWarning)
+        data_yf = yf.download(
+            tickers_list_with_sa,
+            period=periodo,
+            interval=intervalo,
+            start=data_inicio,
+            end=data_fim,
+            auto_adjust=ajustado,
+            progress=False,
+        )
 
     if data_yf is None:
         raise ValueError(f'Tickers não encontrados: {tickers_list_with_sa}')

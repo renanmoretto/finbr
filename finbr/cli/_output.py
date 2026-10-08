@@ -143,7 +143,8 @@ def emit(
     # JSON: serializa diretamente (preserva estrutura aninhada)
     if resolved == Format.json:
         if isinstance(data, pd.DataFrame):
-            payload = data.reset_index().to_dict(orient='records')
+            sem_indice = isinstance(data.index, pd.RangeIndex)
+            payload = data.reset_index(drop=sem_indice).to_dict(orient='records')
         elif isinstance(data, pd.Series):
             payload = data.reset_index().to_dict(orient='records')
         else:
