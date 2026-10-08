@@ -49,6 +49,7 @@ finbr b3 cotahist <dia|ano>   — arquivos COTAHIST da B3
 finbr b3 noticias             — plantão de notícias
 finbr dus <verbo>             — calendário de dias úteis (B3)
 finbr screener                — screener de ações
+finbr comparar <tickers...>   — indicadores de várias ações lado a lado
 ```
 
 Todo comando aceita `--help`. Por exemplo: `finbr acao --help`, `finbr macro ipca --help`.
@@ -103,7 +104,13 @@ finbr acao PETR4 resultados --periodo anual --ano-inicio 2018
 finbr acao PETR4 balanco                 # balanço patrimonial
 finbr acao PETR4 fluxo                   # fluxo de caixa
 finbr acao PETR4 precos --since -1y      # preços do último ano (Yahoo)
+finbr acao PETR4,VALE3,ITUB4 precos      # fechamento de vários tickers, um por coluna
+finbr acao PETR4,VALE3 precos --campo volume
+finbr comparar PETR4 VALE3 ITUB4         # indicadores lado a lado
+finbr comparar PETR4 VALE3 -c p_l,p_vp,dy,roe
 ```
+
+Vários tickers vão separados por vírgula em `finbr acao` (o token seguinte é o verbo) e por espaço em `finbr comparar`.
 
 ### Índices
 

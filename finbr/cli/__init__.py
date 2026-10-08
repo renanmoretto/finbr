@@ -21,6 +21,7 @@ app.add_typer(_di1.app, name='di1', help='Contratos futuros de DI1.')
 app.add_typer(_b3.app, name='b3', help='Dados direto da B3 (cotahist, notícias).')
 app.add_typer(_dus.app, name='dus', help='Utilitários de dias úteis (calendário B3).')
 app.command('screener', help='Screener de ações da B3.')(_screener.screener)
+app.command('comparar', help='Compara indicadores de várias ações lado a lado.')(_acao.comparar)
 
 
 if __name__ == '__main__':
