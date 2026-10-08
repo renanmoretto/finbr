@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import typer
 
-from . import _acao, _b3, _di1, _dus, _indice, _macro, _screener
+from . import _acao, _b3, _cache, _di1, _dus, _indice, _macro, _screener
 
 app = typer.Typer(
     name='finbr',
@@ -19,6 +19,7 @@ app.add_typer(_indice.app, name='indice', help='Preços e composição de índic
 app.add_typer(_macro.app, name='macro', help='Indicadores macro (CDI, SELIC, IPCA, séries SGS).')
 app.add_typer(_di1.app, name='di1', help='Contratos futuros de DI1.')
 app.add_typer(_b3.app, name='b3', help='Dados direto da B3 (cotahist, notícias).')
+app.add_typer(_cache.app, name='cache', help='Cache em disco dos downloads (COTAHIST, SGS).')
 app.add_typer(_dus.app, name='dus', help='Utilitários de dias úteis (calendário B3).')
 app.command('screener', help='Screener de ações da B3.')(_screener.screener)
 
