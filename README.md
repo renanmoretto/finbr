@@ -161,7 +161,15 @@ finbr dus feriados 2024                  # feriados do ano
 ```bash
 finbr screener --limit 20                # 20 primeiras linhas
 finbr screener -o screener.csv           # exporta tudo
+finbr screener --where "p_l > 0 and p_l < 10 and dy > 6" --sort dy --desc
+finbr screener -w "roe > 15" -w 'sectorname == "Financeiro e Outros"' -c ticker,price,p_l,roe
 ```
+
+- `-w, --where EXPR` — filtro sobre as colunas; pode repetir (combinados com AND).
+- `-s, --sort COL` / `--desc` — ordenação.
+- `-c, --colunas A,B,C` — colunas exibidas.
+
+Percentuais vêm em pontos (`dy > 6` = 6%). Principais colunas: `ticker`, `price`, `p_l`, `p_vp`, `dy`, `roe`, `roic`, `margemliquida`, `dividaliquidaebit`, `liquidezmediadiaria`, `valormercado`, `sectorname`.
 
 ## Como biblioteca Python
 
