@@ -8,6 +8,7 @@ from typing import Optional
 import typer
 
 from .. import cdi as _cdi
+from .. import correcao as _correcao
 from .. import ipca as _ipca
 from .. import selic as _selic
 from .. import sgs as _sgs
@@ -78,3 +79,44 @@ def info(
 ) -> None:
     data = _sgs.metadata(codigo)
     emit(data, fmt=fmt, output=output, title=f'SGS {codigo} — metadata')
+
+
+_INDICES = ' | '.join(_correcao.INDICES)
+
+
+@app.command(help=f'Variação acumulada de um índice ({_INDICES}). Default: últimos 12 meses.')
+def acumulado(
+    indice: str = typer.Argument(..., help=_INDICES),
+    de: Optional[str] = typer.Option(None, '--de', help='Início (YYYY-MM ou data).'),
+    ate: Optional[str] = typer.Option(None, '--ate', help='Fim (default: hoje).'),
+    fmt: Format = typer.Option(Format.auto, '--format', '-f'),
+    output: Optional[Path] = typer.Option(None, '--output', '-o'),
+) -> None:
+    try:
+        taxas = _correcao.taxas(indice, parse_date(de), parse_date(ate))
+    except ValueError as e:
+        raise typer.BadParameter(str(e))
+    data = {
+        'indice': indice.lower(),
+        'de': taxas.index[0].date(),
+        'ate': taxas.index[-1].date(),
+        'periodos': len(taxas),
+        'variacao': round(float((1 + taxas).prod() - 1), 6),
+    }
+    emit(data, fmt=fmt, output=output, title=f'{indice.upper()} acumulado')
+
+
+@app.command(help=f'Corrige um valor por um índice ({_INDICES}).')
+def corrigir(
+    valor: float = typer.Argument(..., help='Valor a corrigir, ex. 1000.'),
+    de: str = typer.Option(..., '--de', help='Início (YYYY-MM ou data).'),
+    ate: Optional[str] = typer.Option(None, '--ate', help='Fim (default: hoje).'),
+    indice: str = typer.Option('ipca', '--indice', '-i', help=_INDICES),
+    fmt: Format = typer.Option(Format.auto, '--format', '-f'),
+    output: Optional[Path] = typer.Option(None, '--output', '-o'),
+) -> None:
+    try:
+        data = _correcao.corrigir(valor, indice, parse_date(de), parse_date(ate))
+    except ValueError as e:
+        raise typer.BadParameter(str(e))
+    emit(data, fmt=fmt, output=output, title=f'Correção por {indice.upper()}')
