@@ -48,6 +48,7 @@ finbr di1 <ticker> <verbo>    — vencimento, dias, taxa, pu, dv01
 finbr b3 cotahist <dia|ano>   — arquivos COTAHIST da B3
 finbr b3 noticias             — plantão de notícias
 finbr dus <verbo>             — calendário de dias úteis (B3)
+finbr cache <verbo>           — info, limpar (cache em disco)
 finbr screener                — screener de ações
 ```
 
@@ -162,6 +163,20 @@ finbr dus feriados 2024                  # feriados do ano
 finbr screener --limit 20                # 20 primeiras linhas
 finbr screener -o screener.csv           # exporta tudo
 ```
+
+## Cache
+
+Downloads de COTAHIST e séries do SGS ficam em cache em disco, então repetir um comando é instantâneo.
+
+```bash
+finbr cache info                         # onde está e quanto ocupa
+finbr cache limpar                       # apaga tudo
+FINBR_NO_CACHE=1 finbr macro cdi         # ignora o cache nesta chamada
+```
+
+- Diretório: `~/.cache/finbr` (ou `$XDG_CACHE_HOME/finbr`; `FINBR_CACHE_DIR` sobrescreve).
+- Validade: SGS 1h; COTAHIST de pregões e anos encerrados não expira; ano corrente 6h, dia corrente 1h.
+- Vale também para o uso como biblioteca (`sgs.get`, `cotahist.get`, `cotahist.get_ano`).
 
 ## Como biblioteca Python
 
