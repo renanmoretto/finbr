@@ -43,7 +43,7 @@ pip install git+https://github.com/renanmoretto/finbr
 ```
 finbr acao <ticker> [verbo]   — info, multiplos, dividendos, resultados, balanco, fluxo, precos, ...
 finbr indice <nome> [verbo]   — precos, composicao
-finbr macro <verbo>           — cdi, selic, ipca, serie, buscar, info
+finbr macro <verbo>           — cdi, selic, ipca, acumulado, corrigir, serie, buscar, info
 finbr di1 <ticker> <verbo>    — vencimento, dias, taxa, pu, dv01
 finbr b3 cotahist <dia|ano>   — arquivos COTAHIST da B3
 finbr b3 noticias             — plantão de notícias
@@ -78,6 +78,7 @@ Onde for aceitar uma data, vale:
 
 ```
 2024-01-15      # ISO
+2024-01         # primeiro dia do mês
 today, hoje
 yesterday, ontem
 -5d   -2w   -3m   -1y
@@ -147,6 +148,17 @@ finbr macro buscar inflacao              # buscar séries SGS
 finbr macro info 433                     # metadados da série
 ```
 
+Acumulado e correção de valores (`ipca`, `igpm`, `inpc`, `cdi`, `selic`):
+
+```bash
+finbr macro acumulado ipca               # IPCA acumulado em 12 meses
+finbr macro acumulado cdi --de 2023-01-01 --ate 2024-01-01
+finbr macro corrigir 1000 --de 2020-01   # R$ 1000 de jan/2020 corrigidos pelo IPCA até hoje
+finbr macro corrigir 1000 --de 2020-01 --ate 2023-12 --indice igpm
+```
+
+Índices mensais contam do mês de `--de` ao mês de `--ate`, ambos inclusive; os diários (CDI, SELIC) vão de `--de` (inclusive) a `--ate` (exclusive) — a mesma convenção da Calculadora do Cidadão do Banco Central. A saída mostra o período efetivamente usado.
+
 ### DI1 (futuros)
 
 ```bash
@@ -210,6 +222,8 @@ from finbr.statusinvest import acao
 from finbr import fundamentus
 
 sgs.get(12, data_inicio='2024-01-01')
+finbr.correcao.acumulado('ipca')         # IPCA 12 meses
+finbr.correcao.corrigir(1000, 'ipca', '2020-01-01')
 indices.preco_historico('IBOV', ano_inicio=2020)
 acao.detalhes('PETR4')
 di1.taxa('DI1F26', preco_unitario=95000)
