@@ -2,6 +2,7 @@
 
 Aceita:
     YYYY-MM-DD             -> data ISO
+    YYYY-MM                -> primeiro dia do mês
     today, hoje            -> data de hoje
     yesterday, ontem       -> data de ontem
     -5d, -2w, -3m, -1y     -> offset relativo à data de hoje
@@ -16,6 +17,7 @@ import typer
 
 
 _OFFSET_RE = re.compile(r'^-(\d+)([dwmy])$', re.IGNORECASE)
+_MES_RE = re.compile(r'^\d{4}-\d{2}$')
 
 
 def parse_date(value: str | None) -> datetime.date | None:
@@ -49,10 +51,10 @@ def parse_date(value: str | None) -> datetime.date | None:
                 return today - datetime.timedelta(days=n * 365)
 
     try:
-        return datetime.date.fromisoformat(s)
+        return datetime.date.fromisoformat(f'{s}-01' if _MES_RE.match(s) else s)
     except ValueError:
         raise typer.BadParameter(
-            f"data inválida: {value!r}. Use YYYY-MM-DD, 'today', 'ontem', ou offsets como '-5d', '-2w', '-1m', '-1y'."
+            f"data inválida: {value!r}. Use YYYY-MM-DD, YYYY-MM, 'today', 'ontem', ou offsets como '-5d', '-2w', '-1m', '-1y'."
         )
 
 
