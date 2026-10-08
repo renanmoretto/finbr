@@ -7,6 +7,8 @@ import requests
 import pandas as pd
 import polars as pl
 
+from .. import _cache
+
 
 # metadata
 # https://github.com/codigoquant/b3fileparser/blob/main/b3fileparser/b3_meta_data.py
@@ -164,21 +166,39 @@ def _get_txt_from_zip(zip_file: zipfile.ZipFile) -> bytes:
         return f.read()
 
 
-def _requests_get_txt(data: datetime.date, ssl_error: bool = False) -> bytes:
-    url = (
-        f'https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D{data.strftime("%d%m%Y")}.ZIP'
-    )
+def _download_zip(url: str, ssl_error: bool) -> bytes:
     r = requests.get(url, verify=ssl_error)
     r.raise_for_status()
-    with zipfile.ZipFile(io.BytesIO(r.content)) as thezip:
+    return r.content
+
+
+def _ttl_dia(data: datetime.date) -> float | None:
+    # pregão encerrado não muda mais; o arquivo do dia corrente ainda pode ser republicado
+    return None if data < datetime.date.today() else _cache.HORA
+
+
+def _ttl_ano(ano: int) -> float | None:
+    # o arquivo do ano corrente cresce a cada pregão
+    return None if ano < datetime.date.today().year else 6 * _cache.HORA
+
+
+def _requests_get_txt(data: datetime.date, ssl_error: bool = False) -> bytes:
+    nome = f'COTAHIST_D{data.strftime("%d%m%Y")}.ZIP'
+    url = f'https://bvmf.bmfbovespa.com.br/InstDados/SerHist/{nome}'
+    conteudo = _cache.obter(
+        f'cotahist/{nome}', _ttl_dia(data), lambda: _download_zip(url, ssl_error)
+    )
+    with zipfile.ZipFile(io.BytesIO(conteudo)) as thezip:
         return _get_txt_from_zip(thezip)
 
 
 def _requests_get_txt_anual(ano: int, ssl_error: bool = False) -> bytes:
-    url = f'https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_A{ano}.ZIP'
-    r = requests.get(url, verify=ssl_error)
-    r.raise_for_status()
-    with zipfile.ZipFile(io.BytesIO(r.content)) as thezip:
+    nome = f'COTAHIST_A{ano}.ZIP'
+    url = f'https://bvmf.bmfbovespa.com.br/InstDados/SerHist/{nome}'
+    conteudo = _cache.obter(
+        f'cotahist/{nome}', _ttl_ano(ano), lambda: _download_zip(url, ssl_error)
+    )
+    with zipfile.ZipFile(io.BytesIO(conteudo)) as thezip:
         return _get_txt_from_zip(thezip)
 
 

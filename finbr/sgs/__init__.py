@@ -1,4 +1,5 @@
 import datetime
+import json
 import time
 from typing import Generator
 
@@ -7,6 +8,8 @@ from requests.exceptions import ReadTimeout
 import pandas as pd
 import polars as pl
 from bs4 import BeautifulSoup
+
+from .. import _cache
 
 
 _URL = 'https://api.bcb.gov.br'
@@ -91,6 +94,22 @@ def _get_data_in_chunks(
 
 
 def _get_raw_data(
+    codigo: int,
+    inicio: datetime.date | None = None,
+    fim: datetime.date | None = None,
+    timeout: int = DEFAULT_TIMEOUT,
+    session: requests.Session | None = None,
+) -> list[dict]:
+    chave = f'sgs/{codigo}_{inicio or "inicio"}_{fim or "fim"}.json'
+    conteudo = _cache.obter(
+        chave,
+        _cache.HORA,
+        lambda: json.dumps(_fetch_raw_data(codigo, inicio, fim, timeout, session)).encode(),
+    )
+    return json.loads(conteudo)
+
+
+def _fetch_raw_data(
     codigo: int,
     inicio: datetime.date | None = None,
     fim: datetime.date | None = None,
