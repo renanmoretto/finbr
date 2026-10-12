@@ -1,6 +1,6 @@
 [project]
 name = "finbr"
-version = "0.3.0"
+version = "0.4.0"
 description = "CLI (e biblioteca Python) para dados do mercado financeiro brasileiro: ações, índices, macro, B3."
 authors = [
     {name = "Renan Moretto", email = "renan_moretto@outlook.com"}
