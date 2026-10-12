@@ -2,3 +2,7 @@ line-length = 100
 
 [format]
 quote-style = "single"
+
+[lint.per-file-ignores]
+# __init__.py só reexporta os submódulos
+"__init__.py" = ["F401"]

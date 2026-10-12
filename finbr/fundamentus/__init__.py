@@ -60,7 +60,7 @@ def detalhes(ticker: str) -> dict:
             else:
                 v = float(v)
             data[k] = round(v, 4)
-        except:
+        except Exception:
             pass
 
     return data
